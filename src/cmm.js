@@ -1,7 +1,15 @@
 var cmm = {
-    worker_path : "/cmm_worker.js",
-    root : "/test_env",
+    modules_root : null,// initialized
     _cache : {},
+
+    initialize : function(){
+        this.modules_root = (typeof window.node_modules_root == "undefined")? this.get_default_modules_location() : window.node_modules_root; // define root based on context
+    },
+    get_default_modules_location : function(){
+        var path = location.origin + location.pathname;
+        if(path.indexOf(".html") > -1) path += "/../"; // if this is true the path includes a file name, remove the file name w/ "/../"
+        return path + "node_modules/";
+    },
     loader_functions : {
         promise_to_load_script_into_document : function(script_src, target_document){
             if(typeof document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
@@ -56,7 +64,7 @@ var cmm = {
     },
     module_mapping : function(module){
         if(module.indexOf("/") == -1){
-            var path = this.root + "/node_modules/" + module + "/index.js"; // TODO - map non "index.js" main files based on package.json
+            var path = this.modules_root + module + "/index.js"; // TODO - map non "index.js" main files based on package.json
             return path
         } else {
             return module;
@@ -108,6 +116,7 @@ var cmm = {
         return promise_exports_and_removal;
     }
 }
+cmm.initialize();
 
 var promise_to_require = function(module){ return cmm.promise_to_require(module); }
 var require = function(module){ return cmm.promise_to_require(module); }
