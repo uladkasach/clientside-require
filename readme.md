@@ -1,5 +1,11 @@
 # Clientside Module Manager
 
+The client side module manager is capable of working with modules that utilize the require() function as a promise
+- modules built specifically for the clientside (since frontend development supports only asynchronous loading, as it should)
+- module without dependencies
+- modules that have been transpiled with the cmm transpiler
+
+
 ### Usage
 Just like you would utilize in nodejs + async support for better browser experiences.
 
@@ -22,8 +28,12 @@ CDN example: (not yet developed)
 ```
 
 
-### Idea
-```js
-var promise_to_require = function(module){ return new Promise((resolve, reject)=>{/* magic */}) } // async
-var require = function(module){async promise_to_require(module)} // sync
-```
+### Example Native Packages
+
+
+
+### Transpiler
+
+Comming soon in a seperate repo near you.
+
+The transpiler effectivly takes all `require()` statements, puts them at the beginning of the file, wraps the main code in a promise that resolves after the all the required statements are resolved, and returns the result of that promise (the old module.exports);
