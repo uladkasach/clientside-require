@@ -5,22 +5,19 @@ Just like you would utilize in nodejs + async support for better browser experie
 
 example:
 ```html
-<script src = '/cmm.js'></script> <!-- one dependency to rule them all -->
+<script src = '/node_modules/cmm.js'></script> <!-- one dependency to rule them all -->
 <script>
-    promise_to_require('request-promise')
-        .then((request)=>{
-            return request({uri:"google.com"})
+    var promise_color_name = require("color-name");
+    promise_color_name
+        .then((color_name)=>{
+            console.log(color_name.blue); // outputs  [0, 0, 255]
         })
-        .then((response)=>{
-            console.log("response:")
-            console.log(response)
-        });
 </script>
 ```
 
-CDN example:
+CDN example: (not yet developed)
 ```html
-<script src = '/cmm.js'></script> <!-- one dependency to rule them all -->
+<script src = '/node_modules/cmm.js'></script> <!-- one dependency to rule them all -->
 <script> cmm.CDN = true; // loads resources from CDN instead of locally </script>
 ```
 
