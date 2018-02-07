@@ -1,8 +1,7 @@
-# Clientside Module Manager
+# Clientside Module Manager 
 
-
-[![npm](https://img.shields.io/npm/v/clientside-module-manager.svg?style=flat-square)](https://www.npmjs.com/package/clientside-module_manager)
-[![npm](https://img.shields.io/npm/dm/clientside-module_manager.svg)](https://www.npmjs.com/package/clientside-module_manager)
+[![npm](https://img.shields.io/npm/v/clientside-module-manager.svg?style=flat-square)](https://www.npmjs.com/package/clientside-module-manager)
+[![npm](https://img.shields.io/npm/dm/clientside-module-manager.svg)](https://www.npmjs.com/package/clientside-module-manager)
 
 
 The client side module manager is capable of working with modules that utilize the require() function as a promise. This includes:
@@ -19,6 +18,8 @@ This module needs to be imported manually and needs to have the path to the `nod
 The module loads the `require()` functionality into the global namespace. This can be similarly to how you would expect in nodejs with one key exception: the function is asynchronous (it is a promise). This is because browsers (rightfully) do not support synchronous loading of scripts due to poor user experiences.
 
 #### simple example
+
+index.html
 ```html
 <script src = "node_modules/clientside-module-manager/index.js"></script>
 <script>
@@ -29,6 +30,16 @@ The module loads the `require()` functionality into the global namespace. This c
         })
 </script>
 ```
+
+directory structure
+```
+node_modules/
+    clientside-module-manager/
+    color-name/
+index.html
+```
+
+where the node_modules package is generated with `npm`
 
 ### Example Native Packages
 [view-loader](https://github.com/uladkasach/view-loader)
