@@ -1,0 +1,26 @@
+{
+  "name": "clientside-module-manager",
+  "version": "0.0.1",
+  "description": "a simple and lightweight module that enables npm packaging front-end (clientside) development",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github.com/uladkasach/clientside-module-manager"
+  },
+  "keywords": [
+    "clientside",
+    "frontend",
+    "front-end",
+    "packaging",
+    "require",
+    "async-require",
+    "promise_require",
+    "promise_to_require",
+    "import"
+  ],
+  "author": "UladKasach",
+  "license": "ISC"
+}

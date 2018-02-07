@@ -1,17 +1,26 @@
 # Clientside Module Manager
 
-The client side module manager is capable of working with modules that utilize the require() function as a promise
+
+[![npm](https://img.shields.io/npm/v/clientside-module-manager.svg?style=flat-square)](https://www.npmjs.com/package/clientside-module_manager)
+[![npm](https://img.shields.io/npm/dm/clientside-module_manager.svg)](https://www.npmjs.com/package/clientside-module_manager)
+
+
+The client side module manager is capable of working with modules that utilize the require() function as a promise. This includes:
 - modules built specifically for the clientside (since frontend development supports only asynchronous loading, as it should)
 - module without dependencies
 - modules that have been transpiled with the cmm transpiler
 
+### Installation
+`npm install clientside-module-manager --save`
 
 ### Usage
-Just like you would utilize in nodejs + async support for better browser experiences.
+This module needs to be imported manually and needs to have the path to the `node_modules` directory defined. By default, it will assume that the `node_modules` directory is in the same directory as the file it is initialized in.
 
-example:
+The module loads the `require()` functionality into the global namespace. This can be similarly to how you would expect in nodejs with one key exception: the function is asynchronous (it is a promise). This is because browsers (rightfully) do not support synchronous loading of scripts due to poor user experiences.
+
+#### simple example
 ```html
-<script src = '/node_modules/cmm.js'></script> <!-- one dependency to rule them all -->
+<script src = "node_modules/clientside-module-manager/index.js"></script>
 <script>
     var promise_color_name = require("color-name");
     promise_color_name
@@ -21,15 +30,8 @@ example:
 </script>
 ```
 
-CDN example: (not yet developed)
-```html
-<script src = '/node_modules/cmm.js'></script> <!-- one dependency to rule them all -->
-<script> cmm.CDN = true; // loads resources from CDN instead of locally </script>
-```
-
-
 ### Example Native Packages
-
+[view-loader](https://github.com/uladkasach/view-loader)
 
 
 ### Transpiler
