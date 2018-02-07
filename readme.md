@@ -1,4 +1,4 @@
-# Clientside Module Manager 
+# Clientside Module Manager
 
 [![npm](https://img.shields.io/npm/v/clientside-module-manager.svg?style=flat-square)](https://www.npmjs.com/package/clientside-module-manager)
 [![npm](https://img.shields.io/npm/dm/clientside-module-manager.svg)](https://www.npmjs.com/package/clientside-module-manager)
@@ -21,7 +21,7 @@ The module loads the `require()` functionality into the global namespace. This c
 
 index.html
 ```html
-<script src = "node_modules/clientside-module-manager/index.js"></script>
+<script src = "node_modules/clientside-module-manager/src/index.js"></script>
 <script>
     var promise_color_name = require("color-name");
     promise_color_name
