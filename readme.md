@@ -1,22 +1,9 @@
 # Clientside Module Manager
 
 ### Usage
-Just like you would utilize in nodejs.
+Just like you would utilize in nodejs + async support for better browser experiences.
 
-sync example:
-```html
-<script src = '/cmm.js'></script> <!-- one dependency to rule them all -->
-<script>
-    var request = require('request-promise');
-    request({uri:"google.com"})
-        .then((response)=>{
-            console.log("response:")
-            console.log(response)
-        });
-</script>
-```
-
-async example:
+example:
 ```html
 <script src = '/cmm.js'></script> <!-- one dependency to rule them all -->
 <script>
@@ -29,6 +16,12 @@ async example:
             console.log(response)
         });
 </script>
+```
+
+CDN example:
+```html
+<script src = '/cmm.js'></script> <!-- one dependency to rule them all -->
+<script> cmm.CDN = true; // loads resources from CDN instead of locally </script>
 ```
 
 
