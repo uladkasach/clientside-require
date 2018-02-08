@@ -1,4 +1,4 @@
-var cmm = { // a singleton object
+var clientside_module_manager = { // a singleton object
 
     modules_root : null, // defined in initialization
     initialize : function(){
@@ -30,6 +30,9 @@ var cmm = { // a singleton object
                 .then((frame)=>{
                     //console.log("frame loaded. document : ")
                     frame.contentWindow.module = {};
+                    // frame.contentWindow.clientside_module_manager = clientside_module_manager; // pass the clientside_module_manager by referenceto the frame
+                    frame.contentWindow.require = function(module){ return clientside_module_manager.promise_to_require(module); };
+                    frame.contentWindow.console = console;
                     var frame_document = frame.contentWindow.document;
                     return this.basic.promise_to_load_script_into_document(path, frame_document)
                 })
@@ -161,7 +164,6 @@ var cmm = { // a singleton object
         return promise_content;
     }
 }
-cmm.initialize();
+clientside_module_manager.initialize();
 
-var promise_to_require = function(module){ return cmm.promise_to_require(module); }
-var require = function(module){ return cmm.promise_to_require(module); }
+var require = function(module){ return clientside_module_manager.promise_to_require(module); } // add require as a global property
