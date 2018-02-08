@@ -109,3 +109,6 @@ Packages that do this include:
     - e.g., [view-loader](https://npmjs.com/package/view-loader)
 - modules without dependencies
     - e.g., [color-name](https://npmjs.com/package/color-name)
+
+#### scope
+Note, scope goes two ways. Not only does the namespace that you load not enter the main window, the namespace of the main window does not enter the namespace that you load. E.g., the clientside-module-manager passes a reference to console so that it can output to the main window console and not an unreachable console.
