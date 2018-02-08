@@ -1,20 +1,5 @@
 var clientside_module_manager = { // a singleton object
-
-    modules_root : null, // defined in initialization
-    initialize : function(){
-        this.modules_root = (typeof window.node_modules_root == "undefined")? this.get_default_modules_location() : window.node_modules_root; // define root based on context
-    },
-
-    /*
-        define the default modules location
-            - works for file:// loading and http(s):// loading
-            - assumes that the current file's directory has the node_modules directory in it.
-    */
-    get_default_modules_location : function(){
-        var path = location.origin + location.pathname;
-        if(path.indexOf(".html") > -1) path += "/../"; // if this is true the path includes a file name, remove the file name w/ "/../"
-        return path + "node_modules/";
-    },
+    modules_root : (typeof window.node_modules_root == "undefined")? location.origin + "/node_modules/" : window.node_modules_root, // define root; default is /node_modules/
 
     /*
         loading functionality
@@ -164,6 +149,5 @@ var clientside_module_manager = { // a singleton object
         return promise_content;
     }
 }
-clientside_module_manager.initialize();
 
 var require = function(module){ return clientside_module_manager.promise_to_require(module); } // add require as a global property

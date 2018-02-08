@@ -21,7 +21,6 @@ require("color-name")
     .then((color_name)=>{
         console.log(color_name.blue); // outputs  [0, 0, 255]
     })
-
 ```
 
 
@@ -106,7 +105,7 @@ index.html
 
 ## Example Native Packages
 npm packages written for the browser utilizing `clientside-module-manager`:
-- [cmm-view-loader](https://github.com/uladkasach/view-loader)
+- [clientside-view-loader](https://github.com/uladkasach/clientside-view-loader)
 
 
 ## Transpiler
@@ -151,7 +150,7 @@ The `require()` functionality this module loads is asynchronous as browsers (rig
 
 Packages that do this include:
 - modules built specifically for the clientside (since frontend development supports only asynchronous loading, as it should)
-    - e.g., [cmm-view-loader](https://npmjs.com/package/cmm-view-loader)
+    - e.g., [clientside-view-loader](https://npmjs.com/package/clientside-view-loader)
 - modules without dependencies
     - e.g., [color-name](https://npmjs.com/package/color-name)
 
