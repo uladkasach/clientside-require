@@ -14,9 +14,9 @@ var clientside_module_manager = { // a singleton object
                 .then((frame)=>{
                     //console.log("frame loaded. document : ")
                     frame.contentWindow.module = {};
-                    // frame.contentWindow.clientside_module_manager = clientside_module_manager; // pass the clientside_module_manager by referenceto the frame
-                    frame.contentWindow.require = clientside_module_manager.require;
-                    frame.contentWindow.console = console;
+                    frame.contentWindow.require = clientside_module_manager.require; // pass the require functionality
+                    frame.contentWindow.console = console; // pass the console functionality
+                    frame.contentWindow.parent_document = (typeof document == "undefined")? window.parent_document : window.document; // pass parent document to support loading css; if the current document is undefined we are already in an iframe and must pass parent_document
                     var frame_document = frame.contentWindow.document;
                     return this.basic.promise_to_load_script_into_document(path, frame_document)
                 })
@@ -48,7 +48,8 @@ var clientside_module_manager = { // a singleton object
         css : function(path){ return this.basic.promise_to_load_css_into_window(path) },
         basic : {
             promise_to_load_script_into_document : function(script_src, target_document){
-                if(typeof document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
+                if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
+                if(typeof target_document == "undefined") target_document = window.parent_document; // if window.document is not defined we are in an iframe (i.e., a module being loaded requested this)
                 return new Promise((resolve, reject)=>{
                     var script = document.createElement('script');
                     script.setAttribute("src", script_src);
@@ -70,7 +71,8 @@ var clientside_module_manager = { // a singleton object
                 })
             },
             promise_to_load_css_into_window : function(styles_href, target_document){
-                if(typeof document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
+                if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
+                if(typeof target_document == "undefined") target_document = window.parent_document; // if window.document is not defined we are in an iframe (i.e., a module being loaded requested this)
                 // <link rel="stylesheet" type="text/css" href="/_global/CSS/spinners.css">
                 return new Promise((resolve, reject)=>{
                     var styles = document.createElement('link');
