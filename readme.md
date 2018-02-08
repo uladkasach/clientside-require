@@ -106,7 +106,7 @@ The `require()` functionality this module loads is asynchronous as browsers (rig
 
 Packages that do this include:
 - modules built specifically for the clientside (since frontend development supports only asynchronous loading, as it should)
-    - e.g., [view-loader](https://npmjs.com/package/view-loader)
+    - e.g., [cmm-view-loader](https://npmjs.com/package/cmm-view-loader)
 - modules without dependencies
     - e.g., [color-name](https://npmjs.com/package/color-name)
 
