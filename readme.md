@@ -101,6 +101,41 @@ index.html
         })
 ```
 
+## Advanced Functionality: `require(__, options)`
+
+The require function takes options, `{}`. These options enable various functionality that simplifies using clientside modules.
+
+### options.functions
+
+`options.functions` enables the appending of various functions to the promise element returned by the `require()` command. This enables clean functionality such as `require().load()`, `require.build()`, etc.
+
+This example will use the [clientside-view-loader](https://github.com/uladkasach/clientside-view-loader) module in the demonstration.
+
+without `options.functions`:
+
+```js
+var view_loader = require("clientside-view-loader");
+view_loader.then((view)=>{
+        return view.load("clientside-view-login_signup").generate(options);
+    })
+    .then((modal)=>{
+        document.querySelector("body").appendChild(element);
+        element.show("login");
+    })
+```
+
+with `options.functions`:
+```js
+var view_loader = require("clientside-view-loader", {functions : {
+    load : function(path){ return this.then((view_loader)=>{ view_loader.load(path)})}, // define `view_loader.load()` to the view_loader promise
+}});
+
+view_loader.load("clientside-view-login_signup").generate(options)
+    .then((element)=>{
+        document.querySelector("body").appendChild(element);
+        element.show("login")
+    })
+```
 
 
 ## Example Native Packages

@@ -10,13 +10,12 @@ var clientside_module_manager = { // a singleton object
     loader_functions : {
         js : function(path){ // this is the only special function since we need to scope the contents properly
             var promise_frame_loaded = this.helpers.promise_to_create_frame();
-
             var promise_exports = promise_frame_loaded
                 .then((frame)=>{
                     //console.log("frame loaded. document : ")
                     frame.contentWindow.module = {};
                     // frame.contentWindow.clientside_module_manager = clientside_module_manager; // pass the clientside_module_manager by referenceto the frame
-                    frame.contentWindow.require = function(module){ return clientside_module_manager.promise_to_require(module); };
+                    frame.contentWindow.require = clientside_module_manager.require;
                     frame.contentWindow.console = console;
                     var frame_document = frame.contentWindow.document;
                     return this.basic.promise_to_load_script_into_document(path, frame_document)
@@ -40,7 +39,9 @@ var clientside_module_manager = { // a singleton object
                     return exports;
                 })
 
-            return promise_exports_and_removal;
+           var resolution_promise = promise_exports_and_removal; // rename the promise to be explicit that this promise we will resolve
+
+            return resolution_promise;
         },
         json : function(path){ return this.basic.promise_to_retreive_json(path) },
         html : function(path){ return this.basic.promise_to_get_html_from_file(path) },
@@ -133,21 +134,49 @@ var clientside_module_manager = { // a singleton object
     },
 
     /*
+        options functionality
+    */
+    options_functionality : {
+        append_functions_to_promise : function(resolution_promise, options){ //  options.functions functionality
+            if(typeof options != "undefined" && typeof options.functions != "undefined"){
+                var blacklist = ["then", "catch", "spread"];
+                var function_keys = Object.keys(options.functions);
+                for(var i = 0; i < function_keys.length; i++){
+                    var function_key = function_keys[i];
+                    if(blacklist.indexOf(function_key) > -1) {
+                        console.warn("functions in require(__, {functions : {} }) included a blacklisted function name : `"+key+"`. skipping this function.")
+                    } else {
+                        var requested_function = options.functions[function_key];
+                        resolution_promise[function_key] = requested_function; // append the function to the promise
+                    }
+                }
+            }
+            return resolution_promise;
+        }
+    },
+
+
+    /*
         the bread and butter
             - parse the request, load the file, resolve the content
             - ensures that promise is only queued once with caching
     */
     _cache : {},
-    promise_to_require : function(module_or_path){// load script into iframe to create closed namespace
+    promise_to_require : function(module_or_path, options){// load script into iframe to create closed namespace
                                                   // TODO : handle require() requests inside of the module with caching included
-        if(typeof this._cache[module_or_path] != "undefined") return this._cache[module_or_path]; // retreive from cache if possible
-        var promise_content = this.promise_request_details(module_or_path) // returns [type, path]; type from [npm, js, json, css, html]; path is full path to file
-            .then((request)=>{
-                return this.loader_functions[request.type](request.path); // loader_function[type](path)
-            })
-        this._cache[module_or_path] = promise_content; // cache the promise (and consequently the result)
+        if(typeof this._cache[module_or_path] == "undefined"){ // if not in cache, build into cache
+            var promise_content = this.promise_request_details(module_or_path) // returns [type, path]; type from [npm, js, json, css, html]; path is full path to file
+                .then((request)=>{
+                    return this.loader_functions[request.type](request.path, options); // loader_function[type](path)
+                })
+            this._cache[module_or_path] = promise_content; // cache the promise (and consequently the result)
+        }
+
+        var promise_content = this._cache[module_or_path];
+        var promise_content = this.options_functionality.append_functions_to_promise(promise_content, options); // options.functions functionality
         return promise_content;
-    }
+    },
+    require : function(module, options){ return clientside_module_manager.promise_to_require(module, options); }, // convinience handler
 }
 
-var require = function(module){ return clientside_module_manager.promise_to_require(module); } // add require as a global property
+var require = clientside_module_manager.require;
