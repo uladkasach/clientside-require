@@ -5,20 +5,18 @@
 
 
 ## Overview
-The main utility of this module is that it scopes the javascript it loads so that it does not pollute the global scope.
 
-```js
-// example of loading a javascript file into the window into a private namespace / scope
-require("util.js")
-    .then((util)=>{
-        util.awesome_functionality(); // where util is an object defined in util.js by model.exports (the commonjs standard way of defining exports)
-        window.my_util = util; // add util into global scope in predefined way
-    })
-```
+This package enables utilizing `npm` for clientside development. `node modules` that are [able to handle async `require()`](#async) can be installed with `npm` and utilized out of the box.
 
-An additional utility is that you can utilize the `npm` packaging system and `npm` packages!
+As an added bonus, it provides a clean way of loading resources without poluting global scope including `json`, `html`, `css`, `txt`, and most notably `js`
+
+**in a nutshell**
+this package provides an async `require()` function which mirrors `node.js`'s as much as possible in the browser.
+
+## Quick Demo
+
+ The main utility is that you can utilize the `npm` packaging system and `npm` packages! example:
 ```js
-// example of loading node modules into window
 require("color-name")
     .then((color_name)=>{
         console.log(color_name.blue); // outputs  [0, 0, 255]
@@ -26,38 +24,54 @@ require("color-name")
 
 ```
 
-Note, not all npm modules can be loaded this way. They have to be compatable with async `require`. [See this for more info](#async)
+
+An additional utility of this module is that it loads content in a way that does not pollute the global scope. For example:
+
+```js
+require("util.js")
+    .then((util)=>{
+        util.awesome_functionality(); // where util is an object defined in util.js by model.exports (the commonjs standard way of defining exports)
+        window.my_util = util; // add util into global scope in predefined way
+    })
+```
+
+
 
 ## Installation
-`npm install clientside-module-manager --save`
+
+#### with npm
+
+1. install the module
+    - `npm install clientside-module-manager --save`
+2. load the module into your page
+    - ```<script src = "node_modules/clientside-module-manager/src/index.js"></script>```
+
+#### from scratch
+1. copy the `/src/index.js` file to your server
+2. load it as any other script
+    - ```<script src = "path/to/clientside-module-manager/script/index.js"></script>```
+
 
 ## Usage
 
 ### Initialization
-#### loading the clientside-module-manager
+
+
+Follow the [installation steps](#installation) defined above. If you intend to use node modules, please read this [configuration detail](#node_modules) to ensure the module works in all contexts.
+
+### Examples
+
 
 We will assume for all of these examples that the `clientside-module-manager` has been loaded into the window already as follows:
 ```html
 <script src = "node_modules/clientside-module-manager/src/index.js"></script>
 ```
 
-#### defining path to the `node_modules` directory
-*Skip this step if:*
--  *you do not use `node_modules` in your project you do not need to worry about this.*
-- *your `node_modules` directory is in the same directory as the file that the `clientside-module-manager` script is loaded into, you do not need to do anything. (this is the default setup.)*
-
-If your `node_modules` is *not* in the same directory as the file that the `clientside-module-manager` is loaded you will need to define the path to the `node_modules` directory by defining `window.node_modules_root`
-- example:
-    ```js
-        window.node_modules_root = '/../node_modules' // if node_modules is in parent directory of this file's directory
-    ```
-
-### Examples
 
 #### load an npm package
 
-*<\script> inside of index.html*
-```script
+*``<script>`` inside of index.html*
+```js
 var promise_color_name = require("color-name");
 promise_color_name
     .then((color_name)=>{
@@ -73,7 +87,8 @@ node_modules/
 index.html
 ```
 
-where the node_modules package is generated with `npm` and work with async `require()` as [described here](#async)
+*Note, not all npm modules can be loaded this way. They have to be compatable with async `require`. [See this for more info.](#async)*
+
 
 #### load an html file
 ```js
@@ -89,18 +104,48 @@ where the node_modules package is generated with `npm` and work with async `requ
 
 
 
-### Example Native Packages
+## Example Native Packages
 npm packages written for the browser utilizing `clientside-module-manager`:
-- [view-loader](https://github.com/uladkasach/view-loader)
+- [cmm-view-loader](https://github.com/uladkasach/view-loader)
 
 
-### Transpiler
+## Transpiler
 
 Comming soon in a seperate repo near you.
 
 The transpiler effectivly takes all `require()` statements, puts them at the beginning of the file, wraps the main code in a promise that resolves after the all the required statements are resolved, and returns the result of that promise (the old module.exports);
 
-### Restrictions
+
+## Configuration
+
+#### node_modules
+
+
+By default, the `clientside-module-manager` expects the `node_modules` directory to be in the same directory as the file it is loaded in e.g.:
+```
+node_modules/
+this_file.html
+```
+in this case (above) it will work by default.
+
+
+If your `node_modules` is ***not*** in the same directory as the file that the `clientside-module-manager` is loaded you, e.g.:
+```
+node_modules/
+a_directory/
+    this_file.html
+```
+
+ you will need to define the path to the `node_modules` directory by defining `window.node_modules_root`, e.g.:
+```js
+    window.node_modules_root = '/../node_modules' // if node_modules is in parent directory of this file's directory
+```
+
+**This must be defined before you load the `clientside-module-manager` script.**
+
+
+
+## Restrictions
 #### async
 The `require()` functionality this module loads is asynchronous as browsers (rightfully) do not support synchronous loading of resources. What this means is that `npm` packages which have the `require` statement inside of them MUST treat the `require` function as an async function. In otherwords, `require()` is a promise.
 
