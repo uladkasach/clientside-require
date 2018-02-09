@@ -173,8 +173,49 @@ var clientside_module_manager = { // a singleton object
             }
             return relative_path_root;
         },
+        cleanse_resolve_requests : function(options){
+            if(typeof options == "undefined") options = {};
+            if(typeof options.resolve == "undefined") options.resolve = [];
+            if(typeof options.resolve == "string") options.resolve = [options.resolve]; // cast string to array
+            if(!Array.isArray(options.resolve)){ options.resolve = []; console.warn("options.resolve not defined as an array or string. skipping.");} // make sure datatype is valid
+            if(options.resolve.length == 0) options.resolve.push("content"); // if its empty, then add the default mode: content
+            return options.resolve;
+        },
     },
 
+
+    /*
+        builds the resolved content
+    */
+    generate_resolution_based_on_options : function(cache, options){ // TODO - simplify this functionality
+        var resolve_requests = this.options_functionality.cleanse_resolve_requests(options); // parse the request options (e.g., does user want only the content? only the path? both? etc)
+
+        if(resolve_requests.indexOf("content") > -1){ // append content if user requested it
+            var promise_content = cache.promise_content;
+        } else {
+            var promise_content = Promise.resolve(false);
+        }
+
+        if(resolve_requests.indexOf("path") > -1){ // append the path if user requested it
+            var promise_path = cache.promise_path;
+        } else {
+            var promise_path = Promise.resolve(false);
+        }
+
+        var promise_resolution = Promise.all([promise_content, promise_path]) // build the final resolution object the user will receive after resolving the `request` function
+            .then(([content, path])=>{
+                var resolution = {};
+                if(content !== false) resolution["content"] = content;
+                if(path !== false) resolution["path"] = path;
+
+                if(Object.keys(resolution).length == 1) resolution = resolution[Object.keys(resolution)[0]]; // for convinience, if only one element is requested to be resolved, resolve it without the object wrapper.
+                return resolution;
+            })
+
+
+        var promise_resolution = this.options_functionality.append_functions_to_promise(promise_resolution, options); // options.functions functionality
+        return promise_resolution;
+    },
 
     /*
         the bread and butter
@@ -184,18 +225,22 @@ var clientside_module_manager = { // a singleton object
     _cache : {},
     promise_to_require : function(module_or_path, options){// load script into iframe to create closed namespace
                                                   // TODO : handle require() requests inside of the module with caching included
+
         if(typeof this._cache[module_or_path] == "undefined"){ // if not in cache, build into cache
             var relative_path_root = this.options_functionality.extract_relative_path_root(options);
-            var promise_content = this.promise_request_details(module_or_path, relative_path_root) // returns [type, path]; type from [npm, js, json, css, html]; path is full path to file
+            var promise_request_details = this.promise_request_details(module_or_path, relative_path_root); // returns [type, path]; type from [npm, js, json, css, html]; path is an absolute path to file
+            var promise_path = promise_request_details.then((request)=>{return request.path});
+            var promise_content = promise_request_details
                 .then((request)=>{
                     return this.loader_functions[request.type](request.path, options); // loader_function[type](path)
                 })
-            this._cache[module_or_path] = promise_content; // cache the promise (and consequently the result)
+            this._cache[module_or_path] = {promise_content: promise_content, promise_path : promise_path}; // cache the promise (and consequently the result)
         }
 
-        var promise_content = this._cache[module_or_path];
-        var promise_content = this.options_functionality.append_functions_to_promise(promise_content, options); // options.functions functionality
-        return promise_content;
+        var this_cache = this._cache[module_or_path];
+        var promise_resolution = this.generate_resolution_based_on_options(this_cache, options);
+
+        return promise_resolution;
     },
     require : function(request, options){
         return clientside_module_manager.promise_to_require(request, options);
