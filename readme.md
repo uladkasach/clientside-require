@@ -6,12 +6,12 @@
 
 ## Overview
 
+**TL;DR:**
+this package provides an async `require()` function for the browser; it mirrors the `node.js` implementation as much as possible.
+
 This package enables utilizing `npm` for clientside development. `node modules` that are [able to handle async `require()`](#async) can be installed with `npm` and utilized out of the box.
 
-As an added bonus, it provides a clean way of loading resources without poluting global scope including `json`, `html`, `css`, `txt`, and most notably `js`
-
-**in a nutshell**
-this package provides an async `require()` function which mirrors `node.js`'s as much as possible in the browser.
+As an added bonus, it provides a clean way of loading resources without poluting global scope including `json`, `html`, `css`, `txt`, and most notably `js`.
 
 ## Quick Demo
 
