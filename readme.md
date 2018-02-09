@@ -91,7 +91,7 @@ index.html
 
 #### load an html file
 ```js
-    require("path/to/html/file.html")
+    require("/path/to/html/file.html")
         .then((html)=>{
             console.log("wow! it works!")
         })
@@ -100,6 +100,68 @@ index.html
             if(err == 404) console.log("    `-> the html file was not found!")
         })
 ```
+
+## Fundamental Functionality : `require(request)`
+
+
+### Paths
+
+The `request` argument in `require(request)` expects an absolute path,  a relative path, or a node_module name.
+
+For the following examples, lets assume the following directory structure:
+```
+awesome_directory/
+    awesome_file.js
+    awesome_helper.js
+node_modules/
+    clientside-view-loader/
+root.html
+```
+
+#### absolute path
+Absolute paths operate exactly as one would expect. A request to retrieve the file will be sent directly to that path.
+```js
+// inside `root.html`
+require("/awesome_directory/awesome_file.js")
+    .then((exports)=>{/* ...magic... */})
+```
+
+#### relative path
+Relative paths operate exactly like you would expect, too! The `require()` function utilizes the `clientside-module-manager` to keep track of the `path` to each file its loaded in.
+
+Not only can you do this:
+```js
+// inside `root.html`
+require("awesome_directory/awesome_file.js")
+    .then((exports)=>{/* ...magic... */})
+```
+
+But inside `awesome_directory/awesome_file.js`, which is eventually loaded by `root.html`, we can do this:
+
+```js
+// inside awesome_directory/awesome_file.js
+require("awesome_helper.js")
+    .then((helper_exports)=>{ /* ... use the other scripts for even more magic ... */ })
+```
+
+#### node_module name
+
+The `require(request)` function will assume any `request` that does not start with "/" and has no file extension is a `node_module` name. It will:
+1. find the root of the `node_module` by utilizing the [`node_module_root`](#node_modules)
+2. parse the `package.json` file to find the `main` script
+3. load the main script
+
+
+### Supported Files
+The `require()` loader is capable of loading `html`, `css`, `json`, `txt`, and `js`. Notably for `js` we load the contents of the script without polluting the global scope.
+
+##### comments on requiring `js`
+The content returned from a `js` file is what is included in the `module.exports` object. This is in line with what one would expect with if they worked with node modules.
+
+The way that the `clientside-module-manager` loads `js` enables the user to protect the global scope. By loading the script into an iframe and extracting the `module.exports` object from the iframe we protect the global scope from any global variable definitions that may exist in the target `js` script.
+
+##### comments on requireing `css`
+As there is no way to provide scoping for `css`, `css` is loaded directly into the main window with global scope.
 
 ## Advanced Functionality: `require(__, options)`
 

@@ -13,10 +13,20 @@ var clientside_module_manager = { // a singleton object
             var promise_exports = promise_frame_loaded
                 .then((frame)=>{
                     //console.log("frame loaded. document : ")
+                    /*
+                        NOTE (important) : the contentWindow properties defined will be availible in the loaded modules BUT NOT availible to the clientside-module-manager;
+                                            clientside module manager is only accessible by the contentWindow.require  function that is passed;
+                                            the clientside-module-manager (this object) will have the same global window as the main file at ALL times.
+                    */
                     frame.contentWindow.module = {};
-                    frame.contentWindow.require = clientside_module_manager.require; // pass the require functionality
                     frame.contentWindow.console = console; // pass the console functionality
-                    frame.contentWindow.parent_document = (typeof document == "undefined")? window.parent_document : window.document; // pass parent document to support loading css; if the current document is undefined we are already in an iframe and must pass parent_document
+
+                    var relative_path_root = path.substring(0, path.lastIndexOf("/")) + "/"; // path to module without the filename
+                    frame.contentWindow.require = function(request, options){ // wrap  ensure relative path root is defined for all requests made from modules
+                        if(typeof options == "undefined"){options={relative_path_root:relative_path_root}}else{options.relative_path_root=relative_path_root;} // define options.relative_path_root without overwriting existing options; yes, overwrite relative_path_root though
+                        return clientside_module_manager.require(request, options)
+                    };
+
                     var frame_document = frame.contentWindow.document;
                     return this.basic.promise_to_load_script_into_document(path, frame_document)
                 })
@@ -49,7 +59,6 @@ var clientside_module_manager = { // a singleton object
         basic : {
             promise_to_load_script_into_document : function(script_src, target_document){
                 if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
-                if(typeof target_document == "undefined") target_document = window.parent_document; // if window.document is not defined we are in an iframe (i.e., a module being loaded requested this)
                 return new Promise((resolve, reject)=>{
                     var script = document.createElement('script');
                     script.setAttribute("src", script_src);
@@ -72,7 +81,6 @@ var clientside_module_manager = { // a singleton object
             },
             promise_to_load_css_into_window : function(styles_href, target_document){
                 if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
-                if(typeof target_document == "undefined") target_document = window.parent_document; // if window.document is not defined we are in an iframe (i.e., a module being loaded requested this)
                 // <link rel="stylesheet" type="text/css" href="/_global/CSS/spinners.css">
                 return new Promise((resolve, reject)=>{
                     var styles = document.createElement('link');
@@ -115,7 +123,7 @@ var clientside_module_manager = { // a singleton object
             - is it an npm module reference? if so then we need to generate the path to the main file
             - what filetype should we load?
     */
-    promise_request_details : function(request){
+    promise_request_details : function(request, relative_path_root){
         var absolute_path = request.indexOf("/") > -1;
         var extension = request.split('.').pop();
         var exists_file_extension = extension != request; // if theres no period it'll return the full string
@@ -128,8 +136,10 @@ var clientside_module_manager = { // a singleton object
                     var path = this.modules_root + request + "/" + main; // generate path based on the "main" data in the package json
                     return {type : "js", path : path}
                 })
-        } else if(["js", "json", "css", "html"].indexOf(extension) > -1){ // if its an acceptable extension
-            return Promise.resolve({type : extension, path : request})
+        } else if(["js", "json", "css", "html"].indexOf(extension) > -1){ // if its an acceptable extension and not defining a module
+            var path = request; // since its not defining a module, the request has path information
+            if(!absolute_path) path = relative_path_root + path; // if not an absolute path, use the relative_path_root to generate an absolute path
+            return Promise.resolve({type : extension, path : path})
         } else {
             return Promise.reject("invalid request");
         }
@@ -154,7 +164,15 @@ var clientside_module_manager = { // a singleton object
                 }
             }
             return resolution_promise;
-        }
+        },
+        extract_relative_path_root : function(options){
+            if(typeof options != "undefined" && typeof options.relative_path_root != "undefined"){ // if rel_path is defined,  use it; occurs when we are in modules
+                var relative_path_root = options.relative_path_root;
+            } else { // if rel_path not defined, we are not loading from another module; retreive the directory (strip filename + query) from the main window.location.href
+                var relative_path_root = window.location.href.substring(0, window.location.href.lastIndexOf("/")) + "/";
+            }
+            return relative_path_root;
+        },
     },
 
 
@@ -167,7 +185,8 @@ var clientside_module_manager = { // a singleton object
     promise_to_require : function(module_or_path, options){// load script into iframe to create closed namespace
                                                   // TODO : handle require() requests inside of the module with caching included
         if(typeof this._cache[module_or_path] == "undefined"){ // if not in cache, build into cache
-            var promise_content = this.promise_request_details(module_or_path) // returns [type, path]; type from [npm, js, json, css, html]; path is full path to file
+            var relative_path_root = this.options_functionality.extract_relative_path_root(options);
+            var promise_content = this.promise_request_details(module_or_path, relative_path_root) // returns [type, path]; type from [npm, js, json, css, html]; path is full path to file
                 .then((request)=>{
                     return this.loader_functions[request.type](request.path, options); // loader_function[type](path)
                 })
@@ -178,7 +197,9 @@ var clientside_module_manager = { // a singleton object
         var promise_content = this.options_functionality.append_functions_to_promise(promise_content, options); // options.functions functionality
         return promise_content;
     },
-    require : function(module, options){ return clientside_module_manager.promise_to_require(module, options); }, // convinience handler
+    require : function(request, options){
+        return clientside_module_manager.promise_to_require(request, options);
+    }, // convinience handler
 }
 
 var require = clientside_module_manager.require;
