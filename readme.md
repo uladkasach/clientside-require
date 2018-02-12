@@ -17,9 +17,9 @@ As an added bonus, it provides a clean way of loading resources without poluting
 
  The main utility is that you can utilize the `npm` packaging system and `npm` packages! example:
 ```js
-require("color-name")
-    .then((color_name)=>{
-        console.log(color_name.blue); // outputs  [0, 0, 255]
+require("qs")
+    .then((qs)=>{
+        var query_string = qs.stringify({foo:bar}); // foo=bar
     })
 ```
 
@@ -132,7 +132,7 @@ Relative paths operate exactly like you would expect, too! The `require()` funct
 Not only can you do this:
 ```js
 // inside `root.html`
-require("awesome_directory/awesome_file.js")
+require("./awesome_directory/awesome_file.js")
     .then((exports)=>{/* ...magic... */})
 ```
 
@@ -140,7 +140,7 @@ But inside `awesome_directory/awesome_file.js`, which is eventually loaded by `r
 
 ```js
 // inside awesome_directory/awesome_file.js
-require("awesome_helper.js")
+require("./awesome_helper.js")
     .then((helper_exports)=>{ /* ... use the other scripts for even more magic ... */ })
 ```
 
