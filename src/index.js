@@ -20,7 +20,7 @@ var clientside_module_manager = { // a singleton object
                     */
                     frame.contentWindow.module = {};
                     frame.contentWindow.console = console; // pass the console functionality
-                    // frame.contentWindow.alert = alert; // pass the alert functionality
+                    frame.contentWindow.alert = alert; // pass the alert functionality
                     frame.contentWindow.XMLHttpRequest = XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
 
                     var relative_path_root = path.substring(0, path.lastIndexOf("/")) + "/"; // path to module without the filename
