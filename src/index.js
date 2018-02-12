@@ -126,11 +126,42 @@ var clientside_module_manager = { // a singleton object
             - what filetype should we load?
     */
     promise_request_details : function(request, relative_path_root){
-        var absolute_path = request.indexOf("/") > -1;
-        var extension = request.split('.').pop();
-        var exists_file_extension = extension != request; // if theres no period it'll return the full string
+        /*
+            analyze request
+        */
+        var is_relative_path = request.indexOf("./") == 0; // then it is a path of form "./somepath", a relative path as defined by node
+        var is_a_path = request.indexOf("/") > -1; // make sure not node_relative_path
+        var extension = request.slice(1).split('.').pop(); // slice(1) to skip the first letter - avoids error of assuming extension exists if is_relative_path
+        var exists_file_extension = extension != request.slice(1); // if the "extension" is the full evaluated string, then there is no extension
 
-        if(!absolute_path && !exists_file_extension){ // if not an absolute path and no extension, assume its a node_module.
+        /*
+        console.log("request : " + request);
+        var details = {
+            is_relative_path:is_relative_path,
+            is_a_path:is_a_path,
+            exists_file_extension:exists_file_extension,
+        }
+        console.log(JSON.stringify(details));
+        */
+
+        /*
+            modify request based on analysis (make assumptions)
+        */
+        if(is_a_path && !exists_file_extension){  // if not a node module (i.e., is a path) and there is no extension,
+            extension = "js"; // then it implies a js file
+            request += ".js";
+            // TODO (#11) - sometimes this referes to a directory, how to detect whether directory or file?
+                // if directory we need to go to request/index.js
+                // may want to just attempt to load it and if we find an error assume its a directory and try that too
+        }
+        if(is_relative_path){ // if its a relative path,
+            request = request.slice(2); //  remove the "./" at the begining
+        }
+
+        /*
+            generate absolute path to file and return request details
+        */
+        if(!is_a_path && !exists_file_extension){ // if not a path and no file extension, assume its a node_module.
             var package_json_path = this.modules_root + request + "/package.json";
             return this.loader_functions.basic.promise_to_retreive_json(package_json_path)
                 .then((package_json)=>{
@@ -138,11 +169,12 @@ var clientside_module_manager = { // a singleton object
                     var path = this.modules_root + request + "/" + main; // generate path based on the "main" data in the package json
                     return {type : "js", path : path}
                 })
-        } else if(["js", "json", "css", "html"].indexOf(extension) > -1){ // if its an acceptable extension and not defining a module
+        } else if(is_a_path && ["js", "json", "css", "html"].indexOf(extension) > -1){ // if its an acceptable extension and not defining a module
             var path = request; // since its not defining a module, the request has path information
-            if(!absolute_path) path = relative_path_root + path; // if not an absolute path, use the relative_path_root to generate an absolute path
+            if(is_relative_path) path = relative_path_root + path; // if relative path, use the relative_path_root to generate an absolute path
             return Promise.resolve({type : extension, path : path})
         } else {
+            console.warn("invalid request : " + request + " from root " + relative_path_root)
             return Promise.reject("invalid request");
         }
     },
