@@ -25,12 +25,13 @@ var clientside_require = { // a singleton object
                     frame.contentWindow.XMLHttpRequest = XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
                     frame.contentWindow.require_global = (typeof window.require_global == "undefined")? {} : window.require_global; // pass by reference require global; set {} if it was not already defined by user
 
+                    //console.log("injecting " + injection_require_type + " promise into frame at path " + path);
                     frame.contentWindow.require = function(request, options){ // wrap  ensure relative path root and injection_require_type is defined for all requests made from js files
                         if(typeof options == "undefined") options = {}; // define options if not yet defined
                         options.relative_path_root = path.substring(0, path.lastIndexOf("/")) + "/"; // overwrite relative_path_root to path to this file without the filename
                         if(typeof options.injection_require_type == "undefined") options.injection_require_type  = injection_require_type; // if not defined by user, use parental
 
-                        // console.log("injecting a " + injection_require_type + " require into " + path);
+                        //console.log("a " + injection_require_type + " require was called from " + path + " to " + request);
                         if(injection_require_type == "async"){
                             return clientside_require.require(request, options)
                         } else if(injection_require_type == "sync"){
@@ -356,7 +357,6 @@ var clientside_require = { // a singleton object
     _cache : {promise : {}, content : {}},
     promise_to_require : function(module_or_path, options){// load script into iframe to create closed namespace
                                                            // TODO : handle require() requests inside of the module with caching included
-
         if(typeof this._cache.promise[module_or_path] == "undefined"){ // if not in cache, build into cache
             // console.log("(!) " + module_or_path + " is not already in cache. defining promise to cache");
             var relative_path_root = this.options_functionality.extract_relative_path_root(options);
