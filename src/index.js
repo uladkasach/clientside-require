@@ -25,7 +25,7 @@ var clientside_module_manager = { // a singleton object
                     frame.contentWindow.XMLHttpRequest = XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
 
                     frame.contentWindow.require = function(request, options){ // wrap  ensure relative path root and injection_require_type is defined for all requests made from js files
-                        if(options == "undefined") options = {}; // define options if not yet defined
+                        if(typeof options == "undefined") options = {}; // define options if not yet defined
                         options.relative_path_root = path.substring(0, path.lastIndexOf("/")) + "/"; // overwrite relative_path_root to path to this file without the filename
 
                         if(injection_require_type == "async"){
@@ -167,11 +167,11 @@ var clientside_module_manager = { // a singleton object
         }
 
         /*
-            generate absolute path to file and return request details
+            generate details with special care for node modules
         */
         if(!is_a_path && !exists_file_extension){ // if not a path and no file extension, assume its a node_module.
             var package_json_path = this.modules_root + request + "/package.json";
-            return this.loader_functions.basic.promise_to_retreive_json(package_json_path)
+            var promise_details = this.loader_functions.basic.promise_to_retreive_json(package_json_path)
                 .then((package_json)=>{
                     var injection_require_type = // define require mode for module; overwrites user selected and percolated injection_require_type passed as an argument to this function
                         (typeof package_json.injection_require_type == "undefined" || package_json.injection_require_type !== "async")? "sync" : "async"; // either user package.json defines injection_require_type="async", or we assume its "sync";
@@ -179,46 +179,67 @@ var clientside_module_manager = { // a singleton object
                     var path = this.modules_root + request + "/" + main; // generate path based on the "main" data in the package json
 
                     if(injection_require_type == "sync"){ // extract dependencies from pacakge list and parsed file
-                        var module_dependencies = package_json.dependencies; // get modules this module is dependent on
+                        var module_dependencies = (typeof package_json.dependencies == "undefined")? [] : Object.keys(package_json.dependencies); // get modules this module is dependent on
                         var promise_path_dependencies = this.extract_dependencies_from_js_at_path(path); // get paths this main file is dependent on (note, paths those paths are dependent on will be recursivly loaded)
                         var promise_dependencies = promise_path_dependencies
-                            .then((path_dependencies)=>{
+                            .then((path_dependencies)=>{ // then combine and deduplicate entries
                                 var dependencies_with_duplicates = module_dependencies.concat(path_dependencies);
-                                var dependencies = dependencies_with_duplicates.filter(function (item, pos) {return dependencies_with_duplicates.indexOf(item) == pos}); // https://stackoverflow.com/a/23080662/3068233
-                                return dependencies;
+                                return dependencies_with_duplicates.filter(function (item, pos) {return dependencies_with_duplicates.indexOf(item) == pos}); // https://stackoverflow.com/a/23080662/3068233
                             })
                     }
 
-                    return Promise.all([path, injection_require_type, promise_dependencies]); // promise all data to be generated
-                })
-                .then(([path, injection_require_type, dependencies])=>{
-                    return {type : "js", path : path, injection_require_type : injection_require_type, dependencies : dependencies}
+                    return Promise.all(["js", path, injection_require_type, promise_dependencies]); // promise all data to be generated
                 })
         } else if(is_a_path && ["js", "json", "css", "html"].indexOf(extension) > -1){ // if its an acceptable extension and not defining a module
             var path = request; // since its not defining a module, the request has path information
             if(is_relative_path) path = relative_path_root + path; // if relative path, use the relative_path_root to generate an absolute path
-            if(injection_require_type == "sync" && extension == "js") dependencies = this.loader_functions.basic.promise_to_get_content_from_file(path); // retreive dependencies from file if sync injection required
-            return Promise.resolve({type : extension, path : path, injection_require_type : injection_require_type, dependencies : dependencies}); // TODO (#13) - parse js files to enable sync require without package.json
-        } else {
+
+            if(injection_require_type == "sync" && extension == "js"){
+                var promise_path_dependencies = this.extract_dependencies_from_js_at_path(path); // retreive dependencies from js file if sync injection required, else no dependencies
+                var promise_dependencies = promise_path_dependencies
+                    .then((dependencies_with_duplicates)=>{ // then deduplicate entries
+                        return dependencies_with_duplicates.filter(function (item, pos) {return dependencies_with_duplicates.indexOf(item) == pos}); // https://stackoverflow.com/a/23080662/3068233
+                    })
+            } else {
+                var promise_dependencies = Promise.resolve([]);
+            }
+            var promise_details = Promise.all([extension, path, injection_require_type, promise_dependencies])
+        }
+
+
+        /*
+            return details in standard format
+        */
+        if(typeof promise_details == "undefined"){
             console.warn("invalid request : " + request + " from root " + relative_path_root)
             return Promise.reject("invalid request");
+        } else {
+            return promise_details
+                .then(([extension, path, injection_require_type, dependencies])=>{
+                    return {type : extension, path : path, injection_require_type : injection_require_type, dependencies : dependencies}
+                })
         }
     },
 
 
+    /*
+        dependencies functionality
+    */
     extract_dependencies_from_js_at_path : function(path){
-        var promise_content = this.loader_functions.basic.promise_to_get_content_from_file(path);
-        promise_content
+        return this.loader_functions.basic.promise_to_get_content_from_file(path)
             .then((content)=>{
-                console.log("retreived content to parse: ");
-                console.log(content);
+                /*
+                    extract all require requests from js file manually
+                        - use a regex to match between require(["'] ... ["'])
+                */
+                console.log("conducting regex to extract requires from content...");
+                var regex = /(?:require\(\s*["'])(.*?)(?:["']\s*\))/g // plug into https://regex101.com/ for description; most important is (.*?) and g flag
+                var matches = [];
+                while (m = regex.exec(content)){ matches.push(m[1]) };
+                return matches
             })
     },
-
-    /*
-        load dependencies for synchronous injected require types
-    */
-    promise_dependencies_loaded : function(dependencies, relative_path_root){
+    promise_dependencies_loaded : function(dependencies, relative_path_root){ // load dependencies for synchronous injected require types
         if(typeof dependencies == "undefined") dependencies = [];
         var promise_all_dependencies_cached = [];
         for(var i = 0; i < dependencies.length; i++){ // promise to load each dependency
@@ -228,6 +249,7 @@ var clientside_module_manager = { // a singleton object
         }
         return Promise.all([promise_all_dependencies_cached]);
     },
+
 
     /*
         options functionality
@@ -278,6 +300,8 @@ var clientside_module_manager = { // a singleton object
 
     /*
         builds the resolved content
+            - considers options.functions
+            - considers options.resolve
     */
     generate_resolution_based_on_options : function(cache, options){ // TODO - simplify this functionality
         var resolve_requests = this.options_functionality.cleanse_resolve_requests(options); // parse the request options (e.g., does user want only the content? only the path? both? etc)
@@ -319,8 +343,10 @@ var clientside_module_manager = { // a singleton object
                                                            // TODO : handle require() requests inside of the module with caching included
 
         if(typeof this._cache.promise[module_or_path] == "undefined"){ // if not in cache, build into cache
+
             var relative_path_root = this.options_functionality.extract_relative_path_root(options);
-            // var injection_require_type = this.options_functionality.extract_injection_require_type(options); // NOTE - currently does nothing; will only be useful when we enable parsing of js files for sync require (#13)
+            var injection_require_type = this.options_functionality.extract_injection_require_type(options); // this is overwritten when loading node modules and sync require can not reqeust an async injected_require_type (since that sync require would then become async).
+
             var promise_request_details = this.promise_request_details(module_or_path, relative_path_root, injection_require_type); // returns {type, path, injection_require_type, dependencies}; type from [npm, js, json, css, html]; path is an absolute path to file; require mode from ["sync", "async"]
             var promise_path = promise_request_details.then((request)=>{return request.path});
             var promise_content = promise_request_details
@@ -347,9 +373,10 @@ var clientside_module_manager = { // a singleton object
     },
     synchronous_require : function(request, options){
         // synchronous require expects all dependencies to already be loaded into cache.
+        console.log("requesting a synchronous_require! not done yet...");
     },
     require : function(request, options){
-        return this.promise_to_require(request, options);
+        return clientside_module_manager.promise_to_require(request, options);
     }, // convinience handler
 }
 
