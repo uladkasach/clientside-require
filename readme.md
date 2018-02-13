@@ -62,7 +62,7 @@ All `require`'ed modules are cached to eliminate duplicate requests. The `requir
 
 # Usage
 
-## Instalation
+### Installation
 #### with npm
 
 1. install the module
