@@ -1,14 +1,14 @@
 {
-  "name": "clientside-module-manager",
-  "version": "2.1.0",
-  "description": "a simple and lightweight module that enables npm packaging front-end (clientside) development",
+  "name": "clientside-require",
+  "version": "3.0.0",
+  "description": "require() modules, js, css, html, and json in the browser with as little effort as loading jquery",
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/uladkasach/clientside-module-manager"
+    "url": "https://github.com/uladkasach/clientside-require"
   },
   "keywords": [
     "browser",
@@ -21,7 +21,11 @@
     "async-require",
     "promise_require",
     "promise_to_require",
-    "import"
+    "import",
+    "bower",
+    "browserify",
+    "commonjs",
+    "npm",
   ],
   "author": "UladKasach",
   "license": "AGPL-3.0"
