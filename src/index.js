@@ -27,10 +27,13 @@ var clientside_module_manager = { // a singleton object
                     frame.contentWindow.require = function(request, options){ // wrap  ensure relative path root and injection_require_type is defined for all requests made from js files
                         if(typeof options == "undefined") options = {}; // define options if not yet defined
                         options.relative_path_root = path.substring(0, path.lastIndexOf("/")) + "/"; // overwrite relative_path_root to path to this file without the filename
+                        if(typeof options.injection_require_type == "undefined") options.injection_require_type  = injection_require_type; // if not defined by user, use parental
 
+                        // console.log("injecting a " + injection_require_type + " require into " + path);
                         if(injection_require_type == "async"){
                             return clientside_module_manager.require(request, options)
                         } else if(injection_require_type == "sync"){
+                            options.injection_require_type = "sync"; // requires from sync_requre must always be sync_require
                             return clientside_module_manager.synchronous_require(request, options);
                         } else {
                             console.error("require mode invalid; dev error with clientside-module-manager.");
@@ -232,7 +235,7 @@ var clientside_module_manager = { // a singleton object
                     extract all require requests from js file manually
                         - use a regex to match between require(["'] ... ["'])
                 */
-                console.log("conducting regex to extract requires from content...");
+                //console.log("conducting regex to extract requires from content...");
                 var regex = /(?:require\(\s*["'])(.*?)(?:["']\s*\))/g // plug into https://regex101.com/ for description; most important is (.*?) and g flag
                 var matches = [];
                 while (m = regex.exec(content)){ matches.push(m[1]) };
@@ -243,11 +246,15 @@ var clientside_module_manager = { // a singleton object
         if(typeof dependencies == "undefined") dependencies = [];
         var promise_all_dependencies_cached = [];
         for(var i = 0; i < dependencies.length; i++){ // promise to load each dependency
-            var dependancy = dependencies[i]; //
-            console.log("requiring caching of dependency " + dependancy);
-            var promise_this_dependancy_cached = this.require(dependancy, {relative_path_root:relative_path_root});
+            let dependency = dependencies[i]; //
+            //console.log("requiring caching of dependency " + dependency);
+            var promise_this_dependency_cached = this.require(dependency, {relative_path_root:relative_path_root, injection_require_type : "sync"}) // always pass a sync require when caching dependencies for a sync module
+                .then((result)=>{
+                    //console.log("dependency has been cached for dependency " + dependency)
+                })
+            promise_all_dependencies_cached.push(promise_this_dependency_cached);
         }
-        return Promise.all([promise_all_dependencies_cached]);
+        return Promise.all(promise_all_dependencies_cached);
     },
 
 
@@ -343,15 +350,20 @@ var clientside_module_manager = { // a singleton object
                                                            // TODO : handle require() requests inside of the module with caching included
 
         if(typeof this._cache.promise[module_or_path] == "undefined"){ // if not in cache, build into cache
-
+            // console.log("(!) " + module_or_path + " is not already in cache. defining promise to cache");
             var relative_path_root = this.options_functionality.extract_relative_path_root(options);
-            var injection_require_type = this.options_functionality.extract_injection_require_type(options); // this is overwritten when loading node modules and sync require can not reqeust an async injected_require_type (since that sync require would then become async).
+            var injection_require_type = this.options_functionality.extract_injection_require_type(options); // this is overwritten when loading node modules and sync require can not reqeust an async injection_require_type (since that sync require would then become async).
 
             var promise_request_details = this.promise_request_details(module_or_path, relative_path_root, injection_require_type); // returns {type, path, injection_require_type, dependencies}; type from [npm, js, json, css, html]; path is an absolute path to file; require mode from ["sync", "async"]
             var promise_path = promise_request_details.then((request)=>{return request.path});
             var promise_content = promise_request_details
                 .then((request)=>{
-                    return this.promise_dependencies_loaded(request.dependencies)
+                    /*
+                        this is the main (and most obvious) downfall of synchronous_require; waiting until all dependencies load.
+                            - with async reqeusts dependencies are [] and no waiting occurs.
+                    */
+                    var dependency_relative_path_root = request.path.substring(0, request.path.lastIndexOf("/")) + "/";
+                    return this.promise_dependencies_loaded(request.dependencies, dependency_relative_path_root)
                         .then(()=>{
                             return request;
                         })
@@ -371,11 +383,14 @@ var clientside_module_manager = { // a singleton object
 
         return promise_resolution;
     },
-    synchronous_require : function(request, options){
+    synchronous_require : function(request, options){ // NOTE - synchronous_require is ONLY usable from required scripts and is automatically injected.
         // synchronous require expects all dependencies to already be loaded into cache.
-        console.log("requesting a synchronous_require! not done yet...");
+        // console.log("requesting a synchronous_require: " + request);
+        // console.log(this._cache.content);
+        return this._cache.content[request];
     },
     require : function(request, options){
+        //console.log("requesting a promsie require : " + request);
         return clientside_module_manager.promise_to_require(request, options);
     }, // convinience handler
 }
