@@ -23,6 +23,7 @@ var clientside_module_manager = { // a singleton object
                     frame.contentWindow.console = console; // pass the console functionality
                     frame.contentWindow.alert = alert; // pass the alert functionality
                     frame.contentWindow.XMLHttpRequest = XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
+                    frame.contentWindow.require_global = (typeof window.require_global == "undefined")? {} : window.require_global; // pass by reference require global; set {} if it was not already defined by user
 
                     frame.contentWindow.require = function(request, options){ // wrap  ensure relative path root and injection_require_type is defined for all requests made from js files
                         if(typeof options == "undefined") options = {}; // define options if not yet defined
@@ -88,7 +89,15 @@ var clientside_module_manager = { // a singleton object
                     xhr.overrideMimeType("application/json");
                     xhr.open("GET", json_source, true);
                     xhr.onload = function(){
-                        resolve(JSON.parse(this.responseText));
+                        if(this.status == "404") throw {type : "404"};
+                        try {
+                            resolve(JSON.parse(this.responseText));
+                        } catch (err){
+                            throw (err);
+                        }
+                    };
+                    xhr.onerror = function(error){
+                        throw (error);
                     };
                     xhr.send();
                 })
@@ -247,10 +256,9 @@ var clientside_module_manager = { // a singleton object
         var promise_all_dependencies_cached = [];
         for(var i = 0; i < dependencies.length; i++){ // promise to load each dependency
             let dependency = dependencies[i]; //
-            //console.log("requiring caching of dependency " + dependency);
             var promise_this_dependency_cached = this.require(dependency, {relative_path_root:relative_path_root, injection_require_type : "sync"}) // always pass a sync require when caching dependencies for a sync module
-                .then((result)=>{
-                    //console.log("dependency has been cached for dependency " + dependency)
+                .catch((err)=>{
+                    console.warn("could not load dependency " + dependency + " found in " + relative_path_root);
                 })
             promise_all_dependencies_cached.push(promise_this_dependency_cached);
         }
@@ -395,4 +403,5 @@ var clientside_module_manager = { // a singleton object
     }, // convinience handler
 }
 
-var require = clientside_module_manager.require;
+if(typeof window.require_global == "undefined") window.require_global = {}; // initialize require_global by default if not already initialized
+var require = clientside_module_manager.require; // create global `require` function

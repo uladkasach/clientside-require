@@ -1,6 +1,6 @@
 {
   "name": "clientside-require",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "require() modules, js, css, html, and json in the browser with as little effort as loading jquery",
   "main": "src/index.js",
   "scripts": {
