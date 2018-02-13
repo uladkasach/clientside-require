@@ -1,6 +1,6 @@
 {
   "name": "clientside-module-manager",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "a simple and lightweight module that enables npm packaging front-end (clientside) development",
   "main": "src/index.js",
   "scripts": {

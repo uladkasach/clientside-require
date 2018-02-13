@@ -18,7 +18,8 @@ var clientside_module_manager = { // a singleton object
                                             clientside module manager is only accessible by the contentWindow.require  function that is passed;
                                             the clientside-module-manager (this object) will have the same global window as the main file at ALL times.
                     */
-                    frame.contentWindow.module = {};
+                    frame.contentWindow.module = {exports : {}};
+                    frame.contentWindow.exports = frame.contentWindow.module.exports; // create a reference from "exports" to modules.exports
                     frame.contentWindow.console = console; // pass the console functionality
                     frame.contentWindow.alert = alert; // pass the alert functionality
                     frame.contentWindow.XMLHttpRequest = XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
