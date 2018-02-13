@@ -1,4 +1,4 @@
-var clientside_module_manager = { // a singleton object
+var clientside_require = { // a singleton object
     modules_root : (typeof window.node_modules_root == "undefined")? location.origin + "/node_modules/" : window.node_modules_root, // define root; default is /node_modules/
 
     /*
@@ -32,10 +32,10 @@ var clientside_module_manager = { // a singleton object
 
                         // console.log("injecting a " + injection_require_type + " require into " + path);
                         if(injection_require_type == "async"){
-                            return clientside_module_manager.require(request, options)
+                            return clientside_require.require(request, options)
                         } else if(injection_require_type == "sync"){
                             options.injection_require_type = "sync"; // requires from sync_requre must always be sync_require
-                            return clientside_module_manager.synchronous_require(request, options);
+                            return clientside_require.synchronous_require(request, options);
                         } else {
                             console.error("require mode invalid; dev error with clientside-module-manager.");
                             return false;
@@ -399,9 +399,9 @@ var clientside_module_manager = { // a singleton object
     },
     require : function(request, options){
         //console.log("requesting a promsie require : " + request);
-        return clientside_module_manager.promise_to_require(request, options);
+        return clientside_require.promise_to_require(request, options);
     }, // convinience handler
 }
 
 if(typeof window.require_global == "undefined") window.require_global = {}; // initialize require_global by default if not already initialized
-var require = clientside_module_manager.require; // create global `require` function
+var require = clientside_require.require; // create global `require` function
