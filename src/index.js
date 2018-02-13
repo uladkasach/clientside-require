@@ -177,7 +177,7 @@ var clientside_module_manager = { // a singleton object
             var promise_details = this.loader_functions.basic.promise_to_retreive_json(package_json_path)
                 .then((package_json)=>{
                     var injection_require_type = // define require mode for module; overwrites user selected and percolated injection_require_type passed as an argument to this function
-                        (typeof package_json.injection_require_type == "undefined" || package_json.injection_require_type !== "async")? "sync" : "async"; // either user package.json defines injection_require_type="async", or we assume its "sync";
+                        (typeof package_json.require_mode == "undefined" || package_json.require_mode !== "async")? "sync" : "async"; // either user package.json defines injection_require_type="async", or we assume its "sync";
                     var main = package_json.main;
                     var path = this.modules_root + request + "/" + main; // generate path based on the "main" data in the package json
 
