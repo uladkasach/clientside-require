@@ -398,7 +398,7 @@ var clientside_require = { // a singleton object
 
         return promise_resolution;
     },
-    synchronous_require : function(request, options){ // NOTE - synchronous_require is ONLY usable from required scripts and is automatically injected.
+    synchronous_require : function(module_or_path, options){ // NOTE - synchronous_require is ONLY usable from required scripts and is automatically injected.
         // synchronous require expects all dependencies to already be loaded into cache.
         // console.log("requesting a synchronous_require: " + request);
         // console.log(this._cache.content);
