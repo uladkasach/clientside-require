@@ -311,6 +311,12 @@ var clientside_require = { // a singleton object
             if(options.resolve.length == 0) options.resolve.push("content"); // if its empty, then add the default mode: content
             return options.resolve;
         },
+        generate_cache_path : function(request, options){
+            // TODO - make smarter cachepath derivation. this does not map absolutely to all file
+            var relative_path_root = this.extract_relative_path_root(options);
+            var cache_path = relative_path_root + request;
+            return cache_path;
+        }
     },
 
 
@@ -357,7 +363,8 @@ var clientside_require = { // a singleton object
     _cache : {promise : {}, content : {}},
     promise_to_require : function(module_or_path, options){// load script into iframe to create closed namespace
                                                            // TODO : handle require() requests inside of the module with caching included
-        if(typeof this._cache.promise[module_or_path] == "undefined"){ // if not in cache, build into cache
+        var cache_path = this.options_functionality.generate_cache_path(module_or_path, options);
+        if(typeof this._cache.promise[cache_path] == "undefined"){ // if not in cache, build into cache
             // console.log("(!) " + module_or_path + " is not already in cache. defining promise to cache");
             var relative_path_root = this.options_functionality.extract_relative_path_root(options);
             var injection_require_type = this.options_functionality.extract_injection_require_type(options); // this is overwritten when loading node modules and sync require can not reqeust an async injection_require_type (since that sync require would then become async).
@@ -380,13 +387,13 @@ var clientside_require = { // a singleton object
                     return this.loader_functions[request.type](request.path, request.injection_require_type); // loader_function[type](path, injection_require_type)
                 })
                 .then((content)=>{
-                    this._cache.content[module_or_path] = content; // assign content to cache to enable synchronous retreival
-                    return this._cache.content[module_or_path]; // pull content from cache to reduce data duplication
+                    this._cache.content[cache_path] = content; // assign content to cache to enable synchronous retreival
+                    return this._cache.content[cache_path]; // pull content from cache to reduce data duplication
                 })
-            this._cache.promise[module_or_path] = {promise_content: promise_content, promise_path : promise_path}; // cache the promise (and consequently the result)
+            this._cache.promise[cache_path] = {promise_content: promise_content, promise_path : promise_path}; // cache the promise (and consequently the result)
         }
 
-        var cached_promise = this._cache.promise[module_or_path];
+        var cached_promise = this._cache.promise[cache_path];
         var promise_resolution = this.generate_resolution_based_on_options(cached_promise, options);
 
         return promise_resolution;
@@ -395,7 +402,8 @@ var clientside_require = { // a singleton object
         // synchronous require expects all dependencies to already be loaded into cache.
         // console.log("requesting a synchronous_require: " + request);
         // console.log(this._cache.content);
-        return this._cache.content[request];
+        var cache_path = this.options_functionality.generate_cache_path(module_or_path, options);
+        return this._cache.content[cache_path];
     },
     require : function(request, options){
         //console.log("requesting a promsie require : " + request);
