@@ -1,8 +1,21 @@
-<script src = "node_modules/clientside-module-manager/src/index.js"></script>
+<script src = "node_modules/clientside-require/src/index.js"></script>
 <script>
+/*
     var promise_color_name = require("color-name");
     promise_color_name
         .then((color_name)=>{
             console.log(color_name.blue); // outputs  [0, 0, 255]
         })
+*/
+
+
+require("clientside-view-loader")
+    .then((view)=>{
+        return view.load("clientside-view-modal-login_signup").generate();
+    })
+    .then((modal)=>{
+        document.body.appendChild(modal);
+        modal.show("login");
+    })
+
 </script>
