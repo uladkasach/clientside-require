@@ -1,3 +1,4 @@
+
 var clientside_require = { // a singleton object
     modules_root : (typeof window.node_modules_root == "undefined")? location.origin + "/node_modules/" : window.node_modules_root, // define root; default is /node_modules/
 
@@ -212,12 +213,10 @@ var clientside_require = { // a singleton object
                         default options functions functionality
                     */
                     var default_options_functions_path = package_json.require_options_functions;
-                    console.log("attempt to extract default options... path : " + default_options_functions_path);
                     if(typeof default_options_functions_path == "undefined"){
                         var promise_default_options_functions = Promise.resolve({}); // empty
                     } else {
                         var full_path_to_options_functions = base_path + default_options_functions_path;
-                        console.log("generating require to full path to options functions : " + full_path_to_options_functions)
                         var promise_default_options_functions = clientside_require.require(full_path_to_options_functions) // retreive the config file
                             .then((default_options_functions)=>{
                                 console.log("found default options functions!");
@@ -299,30 +298,47 @@ var clientside_require = { // a singleton object
         options functionality
     */
     options_functionality : {
-        append_functions_to_promise : function(resolution_promise, options, default_options_functions){ //  options.functions functionality
-            if(typeof options == "undefined") options = {}; // set default options
-            if(typeof options.functions == "undefined") options.functions = {}; // set default options.functions
-            var merged_functions = Object.assign({}, default_options_functions, options.functions); // merge options.functions; defaults are overwritten with users selection.
-            console.log("merged functions : ");
-            console.log(merged_functions);
+        append_functions_to_promise : function(original_promise, options, promise_default_options_functions){ //  options.functions functionality
 
-            if(typeof options != "undefined" && typeof options.functions != "undefined"){
-                var blacklist = ["then", "catch", "spread"];
-                var function_keys = Object.keys(options.functions);
-                for(var i = 0; i < function_keys.length; i++){
-                    var function_key = function_keys[i];
-                    if(blacklist.indexOf(function_key) > -1) {
-                        console.warn("functions in require(__, {functions : {} }) included a blacklisted function name : `"+key+"`. skipping this function.")
-                    } else {
-                        var requested_function = options.functions[function_key];
-                        resolution_promise[function_key] = requested_function; // append the function to the promise
+            var promise_options_functions = promise_default_options_functions
+                .then((default_options_functions)=>{
+                    var user_specified = (typeof options == "undefined" || typeof options.functions == "undefined")? {} : options.functions; // if options.functions not defined then make empty
+                    var package_specified = default_options_functions;
+                    var merged_functions = Object.assign({}, package_specified, user_specified); // merge; overwrite package_specified values with user_specified if colisions occur
+                    return merged_functions;
+                })
+            original_promise.promise_options_functions = promise_options_functions; // define reference to promise_options_functions from "target" in proxy
+
+            // utilize a proxy to attach asynchronously defined properties to the promise : https://stackoverflow.com/questions/48795236/how-to-add-a-custom-property-or-method-to-a-promise/48795237#48795237
+            var handler = {
+                get: function(target, prop) {
+                    if(prop in target){ // if the requested method or parameter is in the target object
+                        var value = target[prop];
+                        var bound_value = typeof value == 'function' ? value.bind(target) : value; // bind functions to target, as they would expect
+                        return bound_value; // return the requested name or parameters
+                    } else { // if its not, wait untill the options.functions resolve and check if its there
+                        return function(...args){ // return a function  , ,
+                            return target.promise_options_functions // that returns a promise
+                                .then((options_functions)=>{ // which waits untill promise_options_functions resolves
+                                    if(prop in options_functions){ // checks whether the property is defined
+                                        var value = options_functions[prop];
+                                        if(typeof value == "function"){ // if it is defined and is a function
+                                            bound_value = value.bind(target); // bind to original_promise
+                                            return bound_value(...args); // evaluate and return response while passing orig arguments; see `spread` https://stackoverflow.com/a/31035825/3068233
+                                        } else {
+                                            return value; // if its defined and is a value pass the value
+                                        }
+                                    } else {
+                                        throw "property not defined"; // if its not defined throw an error
+                                    }
+                                })
+                        }
                     }
                 }
-            }
+            };
+            var proxied_promise = new Proxy(original_promise, handler);
 
-            // return an object that extends the promise and additionally appends these requested objects.
-
-            return resolution_promise;
+            return proxied_promise;
         },
         extract_relative_path_root : function(options){
             if(typeof options != "undefined" && typeof options.relative_path_root != "undefined"){ // if rel_path is defined,  use it; occurs when we are in modules
@@ -435,7 +451,7 @@ var clientside_require = { // a singleton object
         return this._cache.content[request];
     },
     require : function(request, options){
-        console.log("requesting a promsie require : " + request);
+        //console.log("requesting a promsie require : " + request);
         return clientside_require.promise_to_require(request, options);
     }, // convinience handler
 }

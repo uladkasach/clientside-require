@@ -1,5 +1,7 @@
 <script src = "node_modules/clientside-require/src/index.js"></script>
 <script>
+var test_case = 3;
+
 /*
     var promise_color_name = require("color-name");
     promise_color_name
@@ -8,14 +10,74 @@
         })
 */
 
+if(test_case == 2){
+    require("clientside-view-loader")
+        .then((view)=>{
+            console.log("required view:")
+            console.log(view);
+        })
+        /*
+            return view.load("clientside-view-modal-login_signup").generate();
+        })
+        .then((modal)=>{
+            document.body.appendChild(modal);
+            modal.show("login");
+        })
+        */
+}
 
-require("clientside-view-loader")
-    .then((view)=>{
-        return view.load("clientside-view-modal-login_signup").generate();
-    })
-    .then((modal)=>{
-        document.body.appendChild(modal);
-        modal.show("login");
-    })
+if(test_case == 3){
+    var view_loader = require("clientside-view-loader")
+        .load("clientside-view-modal-login_signup")
+        .generate()
+        .then((modal)=>{
+            document.body.appendChild(modal);
+            modal.show("login");
+        })
+
+}
+
+if(test_case == 4){
+    original_promise = require("clientside-view-loader");
+
+    var properties_to_append = {
+        load : function(path){
+            return this.then((view_loader)=>{ console.log("loading " + path); return view_loader.load(path)}) // define `view_loader.load()` to the view_loader promise
+        }
+    }
+    var promise_options_functions = Promise.resolve(properties_to_append);
+    original_promise.promise_options_functions = promise_options_functions; // define reference to promise_options_functions from "target" in proxy
+
+    var handler = {
+        get: function(target, prop) {
+            if(prop in target){ // if the requested method or parameter is in the target object
+                var value = target[prop];
+                var bound_value = typeof value == 'function' ? value.bind(target) : value; // bind functions to target, as they would expect
+                return bound_value; // return the requested name or parameters
+            } else { // if its not, wait untill the options.functions resolve and check if its there
+                return function(...args){ // return a function  , ,
+                    return target.promise_options_functions // that returns a promise
+                        .then((options_functions)=>{ // which waits untill promise_options_functions resolves
+                            if(prop in options_functions){ // checks whether the property is defined
+                                var value = options_functions[prop];
+                                if(typeof value == "function"){ // if it is defined and is a function
+                                    bould_value = value.bind(target); // bind to original_promise
+                                    return bould_value(...args); // evaluate and return response while passing orig arguments; see `spread` https://stackoverflow.com/a/31035825/3068233
+                                } else {
+                                    return value; // if its defined and is a value pass the value
+                                }
+                            } else {
+                                throw "property not defined"; // if its not defined throw an error
+                            }
+                        })
+                }
+            }
+        }
+    };
+    var proxied_promise = new Proxy(original_promise, handler);
+
+
+    proxied_promise.load("clientside-view-modal-login_signup"); // works
+}
 
 </script>
