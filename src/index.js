@@ -319,6 +319,9 @@ var clientside_require = { // a singleton object
                     }
                 }
             }
+
+            // return an object that extends the promise and additionally appends these requested objects.
+
             return resolution_promise;
         },
         extract_relative_path_root : function(options){
