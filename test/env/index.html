@@ -2,34 +2,22 @@
 <script>
 var test_case = 3;
 
-/*
+if(test_case == 1){
     var promise_color_name = require("color-name");
     promise_color_name
         .then((color_name)=>{
             console.log(color_name.blue); // outputs  [0, 0, 255]
         })
-*/
+}
 
 if(test_case == 2){
-    require("clientside-view-loader")
-        .then((view)=>{
-            console.log("required view:")
-            console.log(view);
-        })
-        /*
-            return view.load("clientside-view-modal-login_signup").generate();
-        })
-        .then((modal)=>{
-            document.body.appendChild(modal);
-            modal.show("login");
-        })
-        */
+
 }
 
 if(test_case == 3){
     var view_loader = require("clientside-view-loader")
-        .load("clientside-view-modal-login_signup")
-        .generate()
+        .then(view => view.load("clientside-view-modal-login_signup"))
+        .then(compiler => compiler.generate())
         .then((modal)=>{
             document.body.appendChild(modal);
             modal.show("login");
@@ -37,130 +25,5 @@ if(test_case == 3){
 
 }
 
-if(test_case == 4){
-    original_promise = require("clientside-view-loader");
-
-
-
-
-
-
-    var properties_to_append = {
-        load : function(path){
-            return this.then((view_loader)=>{ console.log("loading " + path); return view_loader.load(path)}) // define `view_loader.load()` to the view_loader promise
-        },
-        generate : function(options){
-            return this.then((compiler)=>{ return compiler.generate(options) })
-        },
-    }
-    var promise_properties = Promise.resolve(properties_to_append);
-    original_promise.promise_properties = promise_properties; // define reference to promise_options_functions from "target" in proxy
-
-    var async_defined_properties_handler = {
-        return_defined_target_value : function(target, prop){
-            var value = target[prop];
-            var bound_value = typeof value == 'function' ? value.bind(target) : value; // bind functions to target, as they would expect
-            return bound_value; // return the requested name or parameters
-        },
-        return_promise_to_attempt_return_undefined_target_value : function(target, prop){
-            return function(...args){ // return a function; NOTE - this assumes that any property not statically defiend is a function
-                return target.promise_properties // that returns a promise
-                    .then((loaded_properties)=>{
-                        if(!(prop in loaded_properties)) throw "property not defined"; // if property not in loaded_properties, throw the error
-                        var value = loaded_properties[prop];
-                        bound_value = value.bind(target); // bind to original_promise
-                        return bound_value(...args); // evaluate and return response while passing orig arguments; see `spread` https://stackoverflow.com/a/31035825/3068233
-                    });
-            }
-        },
-        get: function(target, prop) {
-            if(prop in target){
-                return this.return_defined_target_value(target, prop); // if the requested method or parameter is in the target object
-            } else {
-                return this.return_promise_to_attempt_return_undefined_target_value(target, prop); // if its not, wait untill the options.functions resolve and check if its there
-            }
-        }
-    };
-    var proxied_promise = new Proxy(original_promise, async_defined_properties_handler);
-
-
-    proxied_promise.load("clientside-view-modal-login_signup");
-}
-
-if(test_case == 5){
-
-    var unknown_properties_deferment_handler = {
-        return_defined_target_value : function(target, prop){
-            var value = target[prop];
-            var bound_value = typeof value == 'function' ? value.bind(target) : value; // bind functions to target, as they would expect
-            return bound_value; // return the requested name or parameters
-        },
-        get: function(target, prop) {
-            if(prop in target){
-                return this.return_defined_target_value(target, prop); // if the requested method or parameter is in the target object, just return it
-            } else {
-                return target.promise_to_attempt_to_get_async_property(prop);
-            }
-        }
-    };
-
-    class AsyncPropertyPromise {
-        constructor(original_promise, promise_properties) {
-            this.original_promise = original_promise;
-            this.promise_properties = promise_properties;
-            var proxied_self = new Proxy(this, unknown_properties_deferment_handler);
-            return proxied_self;
-        }
-        then(...args) {
-            return this.original_promise.then(...args);
-        }
-        catch(...args){
-            return this.original_promise.catch(...args);
-        }
-        promise_to_attempt_to_get_async_property(property){
-            var promise_properties = this.promise_properties;
-            /*
-                1. return a function - NOTE - this assumes that any property not statically defiend is a function
-                2. make that function resolve with an AsnycPropertyPromise that
-                    a. returns the value of the property (method) if it exists
-                    b. throws error if it does not
-            */
-            return function(...args){ // 1
-
-                var raw_response_promise = this.promise_properties // 2
-                    .then((loaded_properties)=>{
-                        if(!(property in loaded_properties)) throw "property not defined"; // 2.a
-                        var value = loaded_properties[property];
-                        var bound_value = value.bind(this); // bind to original_promise
-                        return bound_value(...args); // evaluate and return response while passing orig arguments; see `spread` https://stackoverflow.com/a/31035825/3068233
-                    });
-                var async_proxied_response_promise = this._wrap_a_promise(raw_response_promise);
-                return async_proxied_response_promise;
-            }
-        }
-        _wrap_a_promise(raw_promise){
-            return new this.constructor(raw_promise, this.promise_properties);
-        }
-    }
-
-    var properties_to_append = {
-        load : function(path){
-            return this.then((view_loader)=>{ console.log("loading " + path); return view_loader.load(path)}) // define `view_loader.load()` to the view_loader promise
-        },
-        generate : function(options){
-            return this.then((compiler)=>{ return compiler.generate(options) })
-        },
-    }
-    var promise_properties = Promise.resolve(properties_to_append);
-    var async_property_promise = new AsyncPropertyPromise(require("clientside-view-loader"), promise_properties);
-    async_property_promise // works
-        .load("clientside-view-modal-login_signup") // works
-        .generate() // works
-        .then((modal)=>{
-            document.body.appendChild(modal);
-            modal.show("login");
-        })
-
-}
 
 </script>
