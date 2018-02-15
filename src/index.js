@@ -198,8 +198,10 @@ var clientside_require = { // a singleton object
                     /*
                         injection require type functionality
                     */
+                    var injection_type_async_not_in_package_options = (typeof package_options == "undefined" || typeof package_options.require_mode == "undefined" || package_options.require_mode !== "async");
+                    var injection_type_async_not_in_package_json =  (typeof package_json == "undefined" || package_json.require_mode !== "async");
                     var injection_require_type = // define require mode for module; overwrites user selected and percolated injection_require_type passed as an argument to this function
-                        (typeof package_options == "undefined" || typeof package_options.require_mode == "undefined" || package_options.require_mode !== "async")? "sync" : "async"; // either user package.json defines injection_require_type="async", or we assume its "sync";
+                        (injection_type_async_not_in_package_json && injection_type_async_not_in_package_options)? "sync" : "async"; // either user injection_require_type="async", or we assume its "sync";
                     if(injection_require_type == "sync"){ // extract dependencies from pacakge list and parsed file
                         var module_dependencies = (typeof package_json.dependencies == "undefined")? [] : Object.keys(package_json.dependencies); // get modules this module is dependent on
                         var promise_path_dependencies = this.extract_dependencies_from_js_at_path(path); // get paths this main file is dependent on (note, paths those paths are dependent on will be recursivly loaded)
@@ -208,7 +210,7 @@ var clientside_require = { // a singleton object
                                 var dependencies_with_duplicates = module_dependencies.concat(path_dependencies);
                                 return dependencies_with_duplicates.filter(function (item, pos) {return dependencies_with_duplicates.indexOf(item) == pos}); // https://stackoverflow.com/a/23080662/3068233
                             })
-                    }
+                    } 
 
                     /*
                         default options functions functionality
