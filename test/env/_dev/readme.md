@@ -1,3 +1,1 @@
-```sh
-ln -s /var/www/git/More/clientside-module-manager /var/www/git/More/clientside-module-manager/test/env/node_modules/clientside-module-manager
-```
+ln -s /var/www/git/More/clientside-require /var/www/git/More/clientside-require/test/env/node_modules/clientside-require

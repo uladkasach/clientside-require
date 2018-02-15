@@ -1,3 +1,4 @@
+
 var clientside_require = { // a singleton object
     modules_root : (typeof window.node_modules_root == "undefined")? location.origin + "/node_modules/" : window.node_modules_root, // define root; default is /node_modules/
 
@@ -186,11 +187,18 @@ var clientside_require = { // a singleton object
             var package_json_path = this.modules_root + request + "/package.json";
             var promise_details = this.loader_functions.basic.promise_to_retreive_json(package_json_path)
                 .then((package_json)=>{
+                    /*
+                        core functionality
+                    */
+                    var base_path = this.modules_root + request + "/";
+                    var main = package_json.main;
+                    var path = base_path + main; // generate path based on the "main" data in the package json
+
+                    /*
+                        injection require type functionality
+                    */
                     var injection_require_type = // define require mode for module; overwrites user selected and percolated injection_require_type passed as an argument to this function
                         (typeof package_json.require_mode == "undefined" || package_json.require_mode !== "async")? "sync" : "async"; // either user package.json defines injection_require_type="async", or we assume its "sync";
-                    var main = package_json.main;
-                    var path = this.modules_root + request + "/" + main; // generate path based on the "main" data in the package json
-
                     if(injection_require_type == "sync"){ // extract dependencies from pacakge list and parsed file
                         var module_dependencies = (typeof package_json.dependencies == "undefined")? [] : Object.keys(package_json.dependencies); // get modules this module is dependent on
                         var promise_path_dependencies = this.extract_dependencies_from_js_at_path(path); // get paths this main file is dependent on (note, paths those paths are dependent on will be recursivly loaded)
@@ -201,7 +209,21 @@ var clientside_require = { // a singleton object
                             })
                     }
 
-                    return Promise.all(["js", path, injection_require_type, promise_dependencies]); // promise all data to be generated
+                    /*
+                        default options functions functionality
+                    */
+                    var default_options_functions_path = package_json.require_options_functions;
+                    if(typeof default_options_functions_path == "undefined"){
+                        var promise_default_options_functions = Promise.resolve({}); // empty
+                    } else {
+                        var full_path_to_options_functions = base_path + default_options_functions_path;
+                        var promise_default_options_functions = clientside_require.require(full_path_to_options_functions) // retreive the config file
+                    }
+
+                    /*
+                        return the data
+                    */
+                    return Promise.all(["js", path, injection_require_type, promise_dependencies, promise_default_options_functions]); // promise all data to be generated
                 })
         } else if(is_a_path && ["js", "json", "css", "html"].indexOf(extension) > -1){ // if its an acceptable extension and not defining a module
             var path = request; // since its not defining a module, the request has path information
@@ -216,7 +238,7 @@ var clientside_require = { // a singleton object
             } else {
                 var promise_dependencies = Promise.resolve([]);
             }
-            var promise_details = Promise.all([extension, path, injection_require_type, promise_dependencies])
+            var promise_details = Promise.all([extension, path, injection_require_type, promise_dependencies, {}])
         }
 
 
@@ -228,8 +250,8 @@ var clientside_require = { // a singleton object
             return Promise.reject("invalid request");
         } else {
             return promise_details
-                .then(([extension, path, injection_require_type, dependencies])=>{
-                    return {type : extension, path : path, injection_require_type : injection_require_type, dependencies : dependencies}
+                .then(([extension, path, injection_require_type, dependencies, default_options_functions])=>{
+                    return {type : extension, path : path, injection_require_type : injection_require_type, dependencies : dependencies, default_options_functions : default_options_functions}
                 })
         }
     },
@@ -271,21 +293,71 @@ var clientside_require = { // a singleton object
         options functionality
     */
     options_functionality : {
-        append_functions_to_promise : function(resolution_promise, options){ //  options.functions functionality
-            if(typeof options != "undefined" && typeof options.functions != "undefined"){
-                var blacklist = ["then", "catch", "spread"];
-                var function_keys = Object.keys(options.functions);
-                for(var i = 0; i < function_keys.length; i++){
-                    var function_key = function_keys[i];
-                    if(blacklist.indexOf(function_key) > -1) {
-                        console.warn("functions in require(__, {functions : {} }) included a blacklisted function name : `"+key+"`. skipping this function.")
+        append_functions_to_promise : function(original_promise, options, promise_default_options_functions){ //  options.functions functionality
+            var promise_options_functions = promise_default_options_functions
+                .then((default_options_functions)=>{
+                    var user_specified = (typeof options == "undefined" || typeof options.functions == "undefined")? {} : options.functions; // if options.functions not defined then make empty
+                    var package_specified = default_options_functions;
+                    var merged_functions = Object.assign({}, package_specified, user_specified); // merge; overwrite package_specified values with user_specified if colisions occur
+                    return merged_functions;
+                })
+
+            // generate asnyc property promises rather than regular promises. Uses a proxy and a builder to do so.
+            // https://stackoverflow.com/questions/48812252/how-to-add-properties-to-a-promise-asynchronously
+            var unknown_properties_deferment_handler = {
+                return_defined_target_value : function(target, prop){
+                    var value = target[prop];
+                    var bound_value = typeof value == 'function' ? value.bind(target) : value; // bind functions to target, as they would expect
+                    return bound_value; // return the requested name or parameters
+                },
+                get: function(target, prop) {
+                    if(prop in target){
+                        return this.return_defined_target_value(target, prop); // if the requested method or parameter is in the target object, just return it
                     } else {
-                        var requested_function = options.functions[function_key];
-                        resolution_promise[function_key] = requested_function; // append the function to the promise
+                        return target.promise_to_attempt_to_get_async_property(prop);
                     }
                 }
+            };
+            class AsyncPropertyPromise {
+                constructor(original_promise, promise_properties) {
+                    this.original_promise = original_promise;
+                    this.promise_properties = promise_properties;
+                    var proxied_self = new Proxy(this, unknown_properties_deferment_handler);
+                    return proxied_self;
+                }
+                then(...args) {
+                    return this.original_promise.then(...args);
+                }
+                catch(...args){
+                    return this.original_promise.catch(...args);
+                }
+                promise_to_attempt_to_get_async_property(property){
+                    //    1. return a function - NOTE - this assumes that any property not statically defiend is a function
+                    //    2. make that function resolve with an AsnycPropertyPromise that
+                    //        a. returns the value of the property (method) if it exists
+                    //        b. throws error if it does not
+                    return function(...args){ // 1
+                        var raw_response_promise = this.promise_properties // 2
+                            .then((loaded_properties)=>{
+                                if(!(property in loaded_properties)){ // 2.a
+                                    //console.error("property " + property + " is not defined for a required object");
+                                    throw "property " + property + " is undefined."; // throw error
+                                }
+                                var value = loaded_properties[property];
+                                var bound_value = value.bind(this); // bind to original_promise
+                                return bound_value(...args); // evaluate and return response while passing orig arguments; see `spread` https://stackoverflow.com/a/31035825/3068233
+                            });
+                        var async_proxied_response_promise = this._wrap_a_promise(raw_response_promise);
+                        return async_proxied_response_promise;
+                    }
+                }
+                _wrap_a_promise(raw_promise){
+                    return new this.constructor(raw_promise, this.promise_properties);
+                }
             }
-            return resolution_promise;
+            var async_property_promise = new AsyncPropertyPromise(original_promise, promise_options_functions);
+
+            return async_property_promise;
         },
         extract_relative_path_root : function(options){
             if(typeof options != "undefined" && typeof options.relative_path_root != "undefined"){ // if rel_path is defined,  use it; occurs when we are in modules
@@ -350,8 +422,8 @@ var clientside_require = { // a singleton object
                 return resolution;
             })
 
-
-        var promise_resolution = this.options_functionality.append_functions_to_promise(promise_resolution, options); // options.functions functionality
+        var promise_default_options_functions = cache.default_options_functions;
+        var promise_resolution = this.options_functionality.append_functions_to_promise(promise_resolution, options, promise_default_options_functions); // options.functions functionality
         return promise_resolution;
     },
 
@@ -371,6 +443,7 @@ var clientside_require = { // a singleton object
 
             var promise_request_details = this.promise_request_details(module_or_path, relative_path_root, injection_require_type); // returns {type, path, injection_require_type, dependencies}; type from [npm, js, json, css, html]; path is an absolute path to file; require mode from ["sync", "async"]
             var promise_path = promise_request_details.then((request)=>{return request.path});
+            var promise_default_options_functions = promise_request_details.then((request)=>{return request.default_options_functions});
             var promise_content = promise_request_details
                 .then((request)=>{
                     /*
@@ -390,7 +463,7 @@ var clientside_require = { // a singleton object
                     this._cache.content[cache_path] = content; // assign content to cache to enable synchronous retreival
                     return this._cache.content[cache_path]; // pull content from cache to reduce data duplication
                 })
-            this._cache.promise[cache_path] = {promise_content: promise_content, promise_path : promise_path}; // cache the promise (and consequently the result)
+            this._cache.promise[cache_path] = {promise_content: promise_content, promise_path : promise_path, default_options_functions : promise_default_options_functions}; // cache the promise (and consequently the result)
         }
 
         var cached_promise = this._cache.promise[cache_path];
@@ -398,11 +471,10 @@ var clientside_require = { // a singleton object
 
         return promise_resolution;
     },
-    synchronous_require : function(module_or_path, options){ // NOTE - synchronous_require is ONLY usable from required scripts and is automatically injected.
+    synchronous_require : function(request, options){
+        // NOTE - synchronous_require is ONLY usable from required scripts and is automatically injected.
         // synchronous require expects all dependencies to already be loaded into cache.
-        // console.log("requesting a synchronous_require: " + request);
-        // console.log(this._cache.content);
-        var cache_path = this.options_functionality.generate_cache_path(module_or_path, options);
+        var cache_path = this.options_functionality.generate_cache_path(request, options);
         return this._cache.content[cache_path];
     },
     require : function(request, options){

@@ -1,15 +1,15 @@
 {
-  "name": "cmm_test_env",
+  "name": "clientside-require-tester",
   "version": "1.0.0",
-  "description": "",
+  "description": "test",
   "main": "index.js",
+  "dependencies": {
+    "color-name": "^1.1.3"
+  },
+  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC",
-  "private": true,
-  "dependencies": {
-    "color-name": "^1.1.3"
-  }
+  "license": "ISC"
 }
