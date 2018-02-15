@@ -290,17 +290,11 @@ var clientside_require = { // a singleton object
 
 
     /*
-        options functionality
+        package defaults functionality
     */
-    options_functionality : {
-        append_functions_to_promise : function(original_promise, options, promise_default_options_functions){ //  options.functions functionality
-            var promise_options_functions = promise_default_options_functions
-                .then((default_options_functions)=>{
-                    var user_specified = (typeof options == "undefined" || typeof options.functions == "undefined")? {} : options.functions; // if options.functions not defined then make empty
-                    var package_specified = default_options_functions;
-                    var merged_functions = Object.assign({}, package_specified, user_specified); // merge; overwrite package_specified values with user_specified if colisions occur
-                    return merged_functions;
-                })
+    package_defaults_functionality : {
+        append_functions_to_promise : function(original_promise, promise_default_options_functions){ //  options.functions functionality
+            var promise_options_functions = promise_default_options_functions;
 
             // generate asnyc property promises rather than regular promises. Uses a proxy and a builder to do so.
             // https://stackoverflow.com/questions/48812252/how-to-add-properties-to-a-promise-asynchronously
@@ -359,6 +353,12 @@ var clientside_require = { // a singleton object
 
             return async_property_promise;
         },
+    },
+
+    /*
+        options functionality
+    */
+    options_functionality : {
         extract_relative_path_root : function(options){
             if(typeof options != "undefined" && typeof options.relative_path_root != "undefined"){ // if rel_path is defined,  use it; occurs when we are in modules
                 var relative_path_root = options.relative_path_root;
@@ -423,7 +423,7 @@ var clientside_require = { // a singleton object
             })
 
         var promise_default_options_functions = cache.default_options_functions;
-        var promise_resolution = this.options_functionality.append_functions_to_promise(promise_resolution, options, promise_default_options_functions); // options.functions functionality
+        var promise_resolution = this.package_defaults_functionality.append_functions_to_promise(promise_resolution, promise_default_options_functions); // options.functions functionality
         return promise_resolution;
     },
 
@@ -432,9 +432,8 @@ var clientside_require = { // a singleton object
             - parse the request, load the file, resolve the content
             - ensures that promise is only queued once with caching
     */
-    _cache : {promise : {}, content : {}},
-    promise_to_require : function(module_or_path, options){// load script into iframe to create closed namespace
-                                                           // TODO : handle require() requests inside of the module with caching included
+    _cache : {promise : {}, content : {}}, // promise for async, content for sync
+    promise_to_require : function(module_or_path, options){
         var cache_path = this.options_functionality.generate_cache_path(module_or_path, options);
         if(typeof this._cache.promise[cache_path] == "undefined"){ // if not in cache, build into cache
             // console.log("(!) " + module_or_path + " is not already in cache. defining promise to cache");
