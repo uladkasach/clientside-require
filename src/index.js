@@ -218,11 +218,6 @@ var clientside_require = { // a singleton object
                     } else {
                         var full_path_to_options_functions = base_path + default_options_functions_path;
                         var promise_default_options_functions = clientside_require.require(full_path_to_options_functions) // retreive the config file
-                            .then((default_options_functions)=>{
-                                console.log("found default options functions!");
-                                console.log(default_options_functions);
-                                return default_options_functions
-                            });
                     }
 
                     /*
@@ -299,7 +294,6 @@ var clientside_require = { // a singleton object
     */
     options_functionality : {
         append_functions_to_promise : function(original_promise, options, promise_default_options_functions){ //  options.functions functionality
-
             var promise_options_functions = promise_default_options_functions
                 .then((default_options_functions)=>{
                     var user_specified = (typeof options == "undefined" || typeof options.functions == "undefined")? {} : options.functions; // if options.functions not defined then make empty
@@ -307,38 +301,63 @@ var clientside_require = { // a singleton object
                     var merged_functions = Object.assign({}, package_specified, user_specified); // merge; overwrite package_specified values with user_specified if colisions occur
                     return merged_functions;
                 })
-            original_promise.promise_options_functions = promise_options_functions; // define reference to promise_options_functions from "target" in proxy
 
-            // utilize a proxy to attach asynchronously defined properties to the promise : https://stackoverflow.com/questions/48795236/how-to-add-a-custom-property-or-method-to-a-promise/48795237#48795237
-            var handler = {
+            // generate asnyc property promises rather than regular promises. Uses a proxy and a builder to do so.
+            // https://stackoverflow.com/questions/48812252/how-to-add-properties-to-a-promise-asynchronously
+            var unknown_properties_deferment_handler = {
+                return_defined_target_value : function(target, prop){
+                    var value = target[prop];
+                    var bound_value = typeof value == 'function' ? value.bind(target) : value; // bind functions to target, as they would expect
+                    return bound_value; // return the requested name or parameters
+                },
                 get: function(target, prop) {
-                    if(prop in target){ // if the requested method or parameter is in the target object
-                        var value = target[prop];
-                        var bound_value = typeof value == 'function' ? value.bind(target) : value; // bind functions to target, as they would expect
-                        return bound_value; // return the requested name or parameters
-                    } else { // if its not, wait untill the options.functions resolve and check if its there
-                        return function(...args){ // return a function  , ,
-                            return target.promise_options_functions // that returns a promise
-                                .then((options_functions)=>{ // which waits untill promise_options_functions resolves
-                                    if(prop in options_functions){ // checks whether the property is defined
-                                        var value = options_functions[prop];
-                                        if(typeof value == "function"){ // if it is defined and is a function
-                                            bound_value = value.bind(target); // bind to original_promise
-                                            return bound_value(...args); // evaluate and return response while passing orig arguments; see `spread` https://stackoverflow.com/a/31035825/3068233
-                                        } else {
-                                            return value; // if its defined and is a value pass the value
-                                        }
-                                    } else {
-                                        throw "property not defined"; // if its not defined throw an error
-                                    }
-                                })
-                        }
+                    if(prop in target){
+                        return this.return_defined_target_value(target, prop); // if the requested method or parameter is in the target object, just return it
+                    } else {
+                        return target.promise_to_attempt_to_get_async_property(prop);
                     }
                 }
             };
-            var proxied_promise = new Proxy(original_promise, handler);
+            class AsyncPropertyPromise {
+                constructor(original_promise, promise_properties) {
+                    this.original_promise = original_promise;
+                    this.promise_properties = promise_properties;
+                    var proxied_self = new Proxy(this, unknown_properties_deferment_handler);
+                    return proxied_self;
+                }
+                then(...args) {
+                    return this.original_promise.then(...args);
+                }
+                catch(...args){
+                    return this.original_promise.catch(...args);
+                }
+                promise_to_attempt_to_get_async_property(property){
+                    //    1. return a function - NOTE - this assumes that any property not statically defiend is a function
+                    //    2. make that function resolve with an AsnycPropertyPromise that
+                    //        a. returns the value of the property (method) if it exists
+                    //        b. throws error if it does not
+                    return function(...args){ // 1
+                        var raw_response_promise = this.promise_properties // 2
+                            .then((loaded_properties)=>{
+                                if(!(property in loaded_properties)){ // 2.a
+                                    //console.error("property " + property + " is not defined for a required object");
+                                    throw "property " + property + " is undefined."; // throw error
+                                }
+                                var value = loaded_properties[property];
+                                var bound_value = value.bind(this); // bind to original_promise
+                                return bound_value(...args); // evaluate and return response while passing orig arguments; see `spread` https://stackoverflow.com/a/31035825/3068233
+                            });
+                        var async_proxied_response_promise = this._wrap_a_promise(raw_response_promise);
+                        return async_proxied_response_promise;
+                    }
+                }
+                _wrap_a_promise(raw_promise){
+                    return new this.constructor(raw_promise, this.promise_properties);
+                }
+            }
+            var async_property_promise = new AsyncPropertyPromise(original_promise, promise_options_functions);
 
-            return proxied_promise;
+            return async_property_promise;
         },
         extract_relative_path_root : function(options){
             if(typeof options != "undefined" && typeof options.relative_path_root != "undefined"){ // if rel_path is defined,  use it; occurs when we are in modules
