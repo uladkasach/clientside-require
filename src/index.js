@@ -21,8 +21,12 @@ var clientside_require = { // a singleton object
                     */
                     frame.contentWindow.module = {exports : {}};
                     frame.contentWindow.exports = frame.contentWindow.module.exports; // create a reference from "exports" to modules.exports
+
                     frame.contentWindow.console = console; // pass the console functionality
                     frame.contentWindow.alert = alert; // pass the alert functionality
+                    frame.contentWindow.confirm = confirm; // pass the confirm functionality
+                    frame.contentWindow.prompt = prompt; // pass the prompt functionality
+
                     frame.contentWindow.XMLHttpRequest = XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
                     frame.contentWindow.require_global = (typeof window.require_global == "undefined")? {} : window.require_global; // pass by reference require global; set {} if it was not already defined by user
 
