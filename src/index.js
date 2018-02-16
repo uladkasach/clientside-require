@@ -147,11 +147,11 @@ var clientside_require = { // a singleton object
     },
 
     /*
-        extract request details
-            - is it an npm module reference? if so then we need to generate the path to the main file
-            - what filetype should we load?
+        analyze and normalize path
+            - used for cache_path
+            - used for generate requst details
     */
-    promise_request_details : function(request, relative_path_root, injection_require_type){
+    normalize_and_analyze_request_path : function(request, relative_path_root){
         /*
             analyze request
         */
@@ -159,16 +159,14 @@ var clientside_require = { // a singleton object
         var is_a_path = request.indexOf("/") > -1; // make sure not node_relative_path
         var extension = request.slice(1).split('.').pop(); // slice(1) to skip the first letter - avoids error of assuming extension exists if is_relative_path
         var exists_file_extension = extension != request.slice(1); // if the "extension" is the full evaluated string, then there is no extension
-
-        /*
-        console.log("request : " + request);
-        var details = {
+        var is_a_module = !is_a_path && !exists_file_extension;
+        var analysis = { // build analysis object
             is_relative_path:is_relative_path,
             is_a_path:is_a_path,
+            extension:extension,
             exists_file_extension:exists_file_extension,
+            is_a_module:is_a_module,
         }
-        console.log(JSON.stringify(details));
-        */
 
         /*
             modify request based on analysis (make assumptions)
@@ -182,19 +180,39 @@ var clientside_require = { // a singleton object
         }
         if(is_relative_path){ // if its a relative path,
             request = request.slice(2); //  remove the "./" at the begining
+            request = relative_path_root + request; // if relative path, use the relative_path_root to generate an absolute path
         }
+        if(is_a_module){
+            request = this.modules_root + request + "/package.json"; // convert request to packagejson path
+        }
+        if(request.indexOf("://") == -1){ // if :// does not exist in string, assume that no origin is defined (origin = protocol + host)
+            request = location.origin + request; // and simply append the locations origin. that is how the browser would treat the request in the first place
+        }
+
+        return [request, analysis];
+    },
+
+    /*
+        extract request details
+            - is it an npm module reference? if so then we need to generate the path to the main file
+            - what filetype should we load?
+    */
+    promise_request_details : function(request, relative_path_root, injection_require_type){
+        var [request, analysis] = this.normalize_and_analyze_request_path(request, relative_path_root);
+        var is_a_path = analysis.is_a_path;
+        var extension = analysis.extension;
+        var is_a_module = analysis.is_a_module;
 
         /*
             generate details with special care for node modules
         */
-        if(!is_a_path && !exists_file_extension){ // if not a path and no file extension, assume its a node_module.
-            var package_json_path = this.modules_root + request + "/package.json";
-            var promise_details = this.loader_functions.basic.promise_to_retreive_json(package_json_path)
+        if(is_a_module){ // if not a path and no file extension, assume its a node_module.
+            var promise_details = this.loader_functions.basic.promise_to_retreive_json(request)
                 .then((package_json)=>{
                     /*
                         core functionality
                     */
-                    var base_path = this.modules_root + request + "/";
+                    var base_path = request.substring(0, request.lastIndexOf("/")) + "/"; // get dir from filepath
                     var main = package_json.main;
                     var path = base_path + main; // generate path based on the "main" data in the package json
                     var package_options = package_json["clientside-require"];
@@ -216,7 +234,6 @@ var clientside_require = { // a singleton object
                             })
                     }
 
-
                     /*
                         return the data
                     */
@@ -224,7 +241,6 @@ var clientside_require = { // a singleton object
                 })
         } else if(is_a_path && ["js", "json", "css", "html"].indexOf(extension) > -1){ // if its an acceptable extension and not defining a module
             var path = request; // since its not defining a module, the request has path information
-            if(is_relative_path) path = relative_path_root + path; // if relative path, use the relative_path_root to generate an absolute path
 
             if(injection_require_type == "sync" && extension == "js"){
                 var promise_path_dependencies = this.extract_dependencies_from_js_at_path(path); // retreive dependencies from js file if sync injection required, else no dependencies
@@ -314,14 +330,19 @@ var clientside_require = { // a singleton object
             if(options.resolve.length == 0) options.resolve.push("content"); // if its empty, then add the default mode: content
             return options.resolve;
         },
-        generate_cache_path : function(request, options){
-            // TODO - make smarter cachepath derivation. this does not map absolutely to all file
-            var relative_path_root = this.extract_relative_path_root(options);
-            var cache_path = relative_path_root + request;
-            return cache_path;
-        }
     },
 
+
+    /*
+        define cache_path
+    */
+    generate_cache_path : function(request, options){
+        var relative_path_root = this.options_functionality.extract_relative_path_root(options);
+        var [request, analysis] = this.normalize_and_analyze_request_path(request, relative_path_root);
+        var cache_path = request; // defines absolute path to file being loaded. For modules, defines path to package.json
+        if(analysis.is_a_module) cache_path = "module:" + cache_path; // since modules return package.json request, distinguish between module requests and actual requests to package.json
+        return cache_path;
+    },
 
     /*
         builds the resolved content
@@ -357,15 +378,22 @@ var clientside_require = { // a singleton object
     },
 
     /*
+        self analysis
+    */
+    _unique_cache_requests : [],
+
+    /*
         the bread and butter
             - parse the request, load the file, resolve the content
             - ensures that promise is only queued once with caching
     */
     _cache : {promise : {}, content : {}}, // promise for async, content for sync
     promise_to_require : function(module_or_path, options){
-        var cache_path = this.options_functionality.generate_cache_path(module_or_path, options);
+        var cache_path = this.generate_cache_path(module_or_path, options);
         if(typeof this._cache.promise[cache_path] == "undefined"){ // if not in cache, build into cache
-            // console.log("(!) " + module_or_path + " is not already in cache. defining promise to cache");
+            //console.log("(!) `" + cache_path + "` is not already in cache. defining promise to cache");
+            this._unique_cache_requests.push(cache_path);
+
             var relative_path_root = this.options_functionality.extract_relative_path_root(options);
             var injection_require_type = this.options_functionality.extract_injection_require_type(options); // this is overwritten when loading node modules and sync require can not reqeust an async injection_require_type (since that sync require would then become async).
 
@@ -401,7 +429,7 @@ var clientside_require = { // a singleton object
     synchronous_require : function(request, options){
         // NOTE - synchronous_require is ONLY usable from required scripts and is automatically injected.
         // synchronous require expects all dependencies to already be loaded into cache.
-        var cache_path = this.options_functionality.generate_cache_path(request, options);
+        var cache_path = this.generate_cache_path(request, options);
         return this._cache.content[cache_path];
     },
     require : function(request, options){
