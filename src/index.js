@@ -160,25 +160,30 @@ var clientside_require = { // a singleton object
             analyze request
         */
         var orig_request = request;
-        var is_relative_path = request.indexOf("./") == 0; // then it is a path of form "./somepath", a relative path as defined by node
+        var is_relative_path_type_1 = request.indexOf("./") == 0; // then it is a path of form "./somepath", a relative path as defined by node
+        var is_relative_path_type_2 = request.indexOf("../") == 0; // then it is a path of form "../somepath", a relative path as defined by node
+        var is_relative_path = is_relative_path_type_1 || is_relative_path_type_2;
         var is_a_path = request.indexOf("/") > -1; // make sure not node_relative_path
         var extension = request.slice(1).split('.').pop(); // slice(1) to skip the first letter - avoids error of assuming extension exists if is_relative_path
         var exists_file_extension = extension != request.slice(1); // if the "extension" is the full evaluated string, then there is no extension
-        var exists_valid_extension = exists_file_extension && extension_whitelist.indexOf(extension) !== -1; // extension is valid if it is fron the extension whitelist
+        var exists_valid_extension = exists_file_extension && extension_whitelist.indexOf(extension) > -1; // extension is valid if it is fron the extension whitelist
         var is_a_module = !is_a_path;
+
 
         /*
             modify request based on analysis (make assumptions)
         */
         if(is_a_path && !exists_valid_extension){  // if not a node module (i.e., is a path) and there is no valid extension,
             extension = "js"; // then it implies a js file
+            exists_file_extension = true;
+            exists_valid_extension = true;
             request += ".js";
             // TODO (#11) - sometimes this referes to a directory, how to detect whether directory or file?
                 // if directory we need to go to request/index.js
                 // may want to just attempt to load it and if we find an error assume its a directory and try that too
         }
         if(is_relative_path){ // if its a relative path,
-            request = request.slice(2); //  remove the "./" at the begining
+            if(is_relative_path_type_1) request = request.slice(2); //  remove the "./" at the begining
             request = relative_path_root + request; // if relative path, use the relative_path_root to generate an absolute path
         }
         if(is_a_module){
@@ -197,7 +202,9 @@ var clientside_require = { // a singleton object
             is_a_path:is_a_path,
             extension:extension,
             exists_file_extension:exists_file_extension,
+            exists_valid_extension:exists_valid_extension,
             is_a_module:is_a_module,
+            relative_path_root : relative_path_root,
         }
         return [request, analysis];
     },
