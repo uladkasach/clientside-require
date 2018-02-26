@@ -215,7 +215,7 @@ var clientside_require = { // a singleton object
                         core functionality
                     */
                     var base_path = request.substring(0, request.lastIndexOf("/")) + "/"; // get dir from filepath
-                    var main = package_json.main;
+                    var main = (package_json.main)? package_json.main : "index.js"; // if main not defined, its index.js
                     var path = base_path + main; // generate path based on the "main" data in the package json
                     var package_options = package_json["clientside-require"];
 
