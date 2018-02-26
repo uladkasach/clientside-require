@@ -161,7 +161,7 @@ var clientside_require = { // a singleton object
         var is_a_path = request.indexOf("/") > -1; // make sure not node_relative_path
         var extension = request.slice(1).split('.').pop(); // slice(1) to skip the first letter - avoids error of assuming extension exists if is_relative_path
         var exists_file_extension = extension != request.slice(1); // if the "extension" is the full evaluated string, then there is no extension
-        var is_a_module = !is_a_path && !exists_file_extension;
+        var is_a_module = !is_a_path;
         var analysis = { // build analysis object
             is_relative_path:is_relative_path,
             is_a_path:is_a_path,
