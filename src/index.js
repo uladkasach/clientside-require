@@ -1,152 +1,28 @@
+/*
+    note: the require functions in this module are expected to be parsed through either 1. webpack or 2. node require
+*/
+var Clientside_Require = function(module_root){
+    var environment = this.detect_environment(); // detect whether we are running in 1. browser or 2. node
 
+    // define module root
+    if(typeof module_root == "undefined" && environment == "browser"){ // if not explicitly defined and browser, attempt default definition
+        module_root = location.origin + "/node_modules/"; // default assumes that the node_modules root is at location origin
+    }
+    if(typeof module_root == "undefined") throw new Error("modules root needs to be defined"); // modules root should be defined by now. if not by now, we are in node env and it was not defined.
+
+    // define loading utilities
+    if(environment == "browser") this.loader_functions = require("./loading_utilities/browser_environment.js"); // browser env loader utilities
+    if(environment == "node") this.loader_functions = require("./loading_utilities/node_environment.js"); // node env loading utilities
+    if(typeof this.loader_functions == "undefined") throw new Error("loader functions are still not defined"); // loader functions should be defined by now
+
+}
+
+
+Clientside_Require.prototype.path_analysis = function(request, relative_path_root){
+
+}
 var clientside_require = { // a singleton object
-    modules_root : (typeof window.node_modules_root == "undefined")? location.origin + "/node_modules/" : window.node_modules_root, // define root; default is /node_modules/
 
-    /*
-        loading functionality
-            - top level functions preserve content scope (e.g., when loading the javascript we dont pollute the global scope and instead all of the module.exports content is resolved)
-            - basic[] functions do not nessesarily preserve content scope
-            - helper functions support top level functions
-    */
-    loader_functions : {
-        js : function(path, injection_require_type){ // this is the only special function since we need to scope the contents properly
-            var promise_frame_loaded = this.helpers.promise_to_create_frame();
-            var promise_exports = promise_frame_loaded
-                .then((frame)=>{
-                    //console.log("frame loaded. document : ")
-                    /*
-                        NOTE (important) : the contentWindow properties defined will be availible in the loaded modules BUT NOT availible to the clientside-module-manager;
-                                            clientside module manager is only accessible by the contentWindow.require  function that is passed;
-                                            the clientside-module-manager (this object) will have the same global window as the main file at ALL times.
-                    */
-                    frame.contentWindow.module = {exports : {}};
-                    frame.contentWindow.exports = frame.contentWindow.module.exports; // create a reference from "exports" to modules.exports
-
-                    frame.contentWindow.console = console; // pass the console functionality
-                    frame.contentWindow.alert = alert; // pass the alert functionality
-                    frame.contentWindow.confirm = confirm; // pass the confirm functionality
-                    frame.contentWindow.prompt = prompt; // pass the prompt functionality
-
-                    frame.contentWindow.HTMLElement = HTMLElement; // pass HTMLElement object
-
-                    frame.contentWindow.XMLHttpRequest = XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
-                    frame.contentWindow.require_global = (typeof window.require_global == "undefined")? {} : window.require_global; // pass by reference require global; set {} if it was not already defined by user
-
-                    //console.log("injecting " + injection_require_type + " promise into frame at path " + path);
-                    frame.contentWindow.require = function(request, options){ // wrap  ensure relative path root and injection_require_type is defined for all requests made from js files
-                        if(typeof options == "undefined") options = {}; // define options if not yet defined
-                        options.relative_path_root = path.substring(0, path.lastIndexOf("/")) + "/"; // overwrite relative_path_root to path to this file without the filename
-                        if(typeof options.injection_require_type == "undefined") options.injection_require_type  = injection_require_type; // if not defined by user, use parental
-
-                        //console.log("a " + injection_require_type + " require was called from " + path + " to " + request);
-                        if(injection_require_type == "async"){
-                            return clientside_require.require(request, options)
-                        } else if(injection_require_type == "sync"){
-                            options.injection_require_type = "sync"; // requires from sync_requre must always be sync_require
-                            return clientside_require.synchronous_require(request, options);
-                        } else {
-                            console.error("require mode invalid; dev error with clientside-module-manager.");
-                            return false;
-                        }
-                    };
-
-                    var frame_document = frame.contentWindow.document;
-                    return this.basic.promise_to_load_script_into_document(path, frame_document)
-                })
-                .then((frame_document)=>{
-                    var frame_window = frame_document.defaultView;
-                    //console.log(frame_window);
-                    //console.log(frame_window.module)
-                    return(frame_window.module.exports);
-                })
-
-            var promise_to_remove_frame = Promise.all([promise_frame_loaded, promise_exports])
-                .then(([frame, __])=>{
-                    frame.parentNode.removeChild(frame);
-                })
-
-            var promise_exports_and_removal = Promise.all([promise_exports, promise_frame_loaded])
-                .then(([exports, __])=>{
-                    //console.log("exports:");
-                    //console.log(exports);
-                    return exports;
-                })
-
-           var resolution_promise = promise_exports_and_removal; // rename the promise to be explicit that this promise we will resolve
-
-            return resolution_promise;
-        },
-        json : function(path){ return this.basic.promise_to_retreive_json(path) },
-        html : function(path){ return this.basic.promise_to_get_content_from_file(path) },
-        css : function(path){ return this.basic.promise_to_load_css_into_window(path) },
-        basic : {
-            promise_to_load_script_into_document : function(script_src, target_document){
-                if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
-                return new Promise((resolve, reject)=>{
-                    var script = document.createElement('script');
-                    script.setAttribute("src", script_src);
-                    script.onload = function(){
-                        resolve(target_document);
-                    };
-                    target_document.getElementsByTagName('head')[0].appendChild(script);
-                })
-            },
-            promise_to_retreive_json : function(json_source){
-                return new Promise((resolve, reject)=>{
-                    var xhr = new XMLHttpRequest();
-                    xhr.overrideMimeType("application/json");
-                    xhr.open("GET", json_source, true);
-                    xhr.onload = function(){
-                        if(this.status == "404") throw {type : "404"};
-                        try {
-                            resolve(JSON.parse(this.responseText));
-                        } catch (err){
-                            throw (err);
-                        }
-                    };
-                    xhr.onerror = function(error){
-                        throw (error);
-                    };
-                    xhr.send();
-                })
-            },
-            promise_to_load_css_into_window : function(styles_href, target_document){
-                if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
-                // <link rel="stylesheet" type="text/css" href="/_global/CSS/spinners.css">
-                return new Promise((resolve, reject)=>{
-                    var styles = document.createElement('link');
-                    styles.type = "text/css";
-                    styles.rel = 'stylesheet';
-                    styles.href = styles_href;
-                    styles.onload = function(){
-                        resolve(target_document);
-                    };
-                    target_document.getElementsByTagName('head')[0].appendChild(styles);
-                })
-            },
-            promise_to_get_content_from_file : function(destination_path){
-                return new Promise((resolve, reject)=>{
-                    var xhr = new XMLHttpRequest();
-                    xhr.open("GET", destination_path, true);
-                    xhr.onload = function(){
-                        resolve(this.responseText)
-                    };
-                    xhr.send();
-                })
-            },
-        },
-        helpers : {
-            promise_to_create_frame : function(){
-                return new Promise((resolve, reject)=>{
-                    //console.log("building promise");
-                    var frame = document.createElement('iframe');
-                    frame.onload = function(){resolve(frame)};
-                    frame.style.display = "none"; // dont display the iframe
-                    document.querySelector("html").appendChild(frame);
-                })
-            }
-        },
-    },
 
     /*
         analyze and normalize path
@@ -329,7 +205,11 @@ var clientside_require = { // a singleton object
             if(typeof options != "undefined" && typeof options.relative_path_root != "undefined"){ // if rel_path is defined,  use it; occurs when we are in modules
                 var relative_path_root = options.relative_path_root;
             } else { // if rel_path not defined, we are not loading from another module; retreive the directory (strip filename + query) from the main window.location.href
-                var relative_path_root = window.location.href.substring(0, window.location.href.lastIndexOf("/")) + "/";
+                if(typeof window != "undefined"){
+                    var relative_path_root = window.location.href.substring(0, window.location.href.lastIndexOf("/")) + "/";
+                } else {
+
+                }
             }
             return relative_path_root;
         },
@@ -457,5 +337,71 @@ var clientside_require = { // a singleton object
     }, // convinience handler
 }
 
-if(typeof window.require_global == "undefined") window.require_global = {}; // initialize require_global by default if not already initialized
-var require = clientside_require.require; // create global `require` function
+
+/*
+    helper functions
+*/
+var clientside_require_helpers = {
+
+    /*
+        utility to define modules_root in browsers based on browser environment
+    */
+    environment_is_browser : function(){
+        return typeof window != "undefined" && window.location != "undefined";
+    },
+    extract_modules_root_from_browser_environment : function(){
+        if(typeof window.node_modules_root == "undefined"){
+            return  // if not explicitly defined by user, assume node_modules are defined in origin location
+        } else {
+            return window.node_modules_root; // if defined, then use what was defined
+        }
+    },
+    define_modules_root : function(injected_modules_root){
+        if(typeof injected_modules_root == "string") var modules_root = injected_modules_root;
+        if(typeof modules_root == "undefined" && this.environment_is_browser()) var modules_root = this.extract_modules_root_from_browser_environment();
+
+    }
+}
+
+
+
+
+
+Clientside_Require.prototype.loader_functions =
+
+
+
+
+
+
+/*
+    for when the module is loaded as a script file directly into the document
+        - detected by checking if require is defined; native browser documents do not have this property defined (unlike node and unlike documents loaded by require module)
+*/
+if(typeof require == "undefined"){ // if require is not defined, we are being loaded in a browser as a script
+    if(!clientside_require_helpers.environment_is_browser()) throw new Error("require is not defined and we are not in a browser. environment unknown.")
+    if(typeof window.require_global == "undefined") window.require_global = {}; // initialize require_global by default if not already initialized
+    clientside_require_helpers.define_modules_root(); // define the modules root based on environment
+    var require = clientside_require.require; // create global `require` function
+}
+
+/*
+    define exports function to be used in CommonJS require environments (e.g., node and clientside require)
+        - returns a function which passes "module_root" as a parameter
+*/
+module.exports = function(module_root){ // if being utilized as module, expect that user will define module root
+    clientside_require_helpers.define_modules_root(module_root); // define the modules root
+
+}
+
+    module.exports = clientside_require.require;
+    (function(){
+        var location_exists = typeof window != "undefined" && typeof ;
+        var browser_definition_exists = typeof window != "undefined" && typeof window.node_modules_root != "undefined";
+        var node_definition_exists = typeof process != "undefined" && typeof process.env.node_modules_root != "undefined";
+        if(browser_definition_exists)return window.node_modules_root; // if a browser execution defined it, use it
+        if(node_definition_exists) return process.env.node_modules_root; //if a node execution defined it, use it
+        if(location_exists) return location.origin + "/node_modules/"; // if we're in a browser and it wasn't explicitly defined, use /node_modules/ as default
+        throw new Error("node_modules_root was not defined by node process.");
+    })()
+}
