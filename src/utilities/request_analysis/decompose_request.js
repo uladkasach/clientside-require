@@ -1,6 +1,5 @@
-var basic_loaders = require("./../loading_utilities/basic.js");
+var basic_loaders = require("./../content_loading/basic.js");
 var normalize_path = require("./normalize_path.js");
-var find_dependencies_in_js_file = require("./../sync_dependencies_managment/find_dependencies_in_js_file.js");
 /*
     extract request details
         - utilizes path_analis to extract normalized request path and anaylsis
@@ -35,7 +34,26 @@ var decomposer = {
     promise_to_decompose_valid_file_request : function(request, extension, injection_require_type){
         var path = request; // since its not defining a module, the request has path information
         return [extension, path, injection_require_type];
+    },
+
+    /*
+        parse a js file to extract all dependencies
+            - dependencies are defined as module_or_path content found inside of a require() statment in the js file
+            - PURPOSE: to enable preloading of modules for sync require injection
+    */
+    find_dependencies_in_js_file : async function(path){
+        var content = await basic_loaders.promise_to_get_content_from_file(path)
+        /*
+            extract all require requests from js file manually
+                - use a regex to match between require(["'] ... ["'])
+        */
+        //console.log("conducting regex to extract requires from content...");
+        var regex = /(?:require\(\s*["'])(.*?)(?:["']\s*\))/g // plug into https://regex101.com/ for description; most important is (.*?) and g flag
+        var matches = [];
+        while (m = regex.exec(content)){ matches.push(m[1]) };
+        return matches
     }
+
 }
 var decompose_request = async function(request, relative_path_root, injection_require_type){
     var [request, analysis] = normalize_path(request, relative_path_root);

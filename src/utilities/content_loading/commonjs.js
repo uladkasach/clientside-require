@@ -39,7 +39,7 @@ module.exports = {
         frame.contentWindow.XMLHttpRequest = XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
 
         // clientside_require specific variables
-        frame.contentWindow.require_global = (typeof window.require_global == "undefined")? {} : window.require_global; // pass by reference require global; set {} if it was not already defined by user
+        frame.contentWindow.require_global = window.require_global; // pass by reference require global
 
         // CommonJS environment variables
         frame.contentWindow.module = {exports : {}};

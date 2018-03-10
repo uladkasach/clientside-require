@@ -28,5 +28,10 @@
     "npm"
   ],
   "author": "UladKasach",
-  "license": "AGPL-3.0"
+  "license": "AGPL-3.0",
+  "devDependencies": {
+    "jsdom": "^11.6.2",
+    "mocha": "^5.0.4",
+    "xmlhttprequest": "^1.8.0"
+  }
 }

@@ -42,7 +42,7 @@ var normalize_path = function(path, modules_root, relative_path_root){
         path = modules_root + path + "/package.json"; // convert path to packagejson path
     }
     if(path.indexOf("://") == -1){ // if :// does not exist in string, assume that no origin is defined (origin = protocol + host)
-        path = location.origin + path; // and simply append the locations origin. that is how the browser would treat the path in the first place
+        path = window.location.origin + path; // and simply append the locations origin. that is how the browser would treat the path in the first place
     }
 
     /*

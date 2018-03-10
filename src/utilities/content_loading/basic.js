@@ -16,7 +16,6 @@ module.exports = {
     promise_to_retreive_json : function(json_source){
         return new Promise((resolve, reject)=>{
             var xhr = new XMLHttpRequest();
-            xhr.overrideMimeType("application/json");
             xhr.open("GET", json_source, true);
             xhr.onload = function(){
                 if(this.status == "404") throw {type : "404"};
@@ -27,12 +26,13 @@ module.exports = {
                 }
             };
             xhr.onerror = function(error){
+                if(typeof error == "undefined") error = this.statusText; // if error is not defined, atleast resolve with status text
                 throw (error);
             };
             xhr.send();
         })
     },
-    promise_to_load_css_into_window : function(styles_href, target_document){
+    promise_to_load_css_into_document : function(styles_href, target_document){
         if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
         // <link rel="stylesheet" type="text/css" href="/_global/CSS/spinners.css">
         return new Promise((resolve, reject)=>{
@@ -52,6 +52,10 @@ module.exports = {
             xhr.open("GET", destination_path, true);
             xhr.onload = function(){
                 resolve(this.responseText)
+            };
+            xhr.onerror = function(error){
+                if(typeof error == "undefined") error = this.statusText; // if error is not defined, atleast resolve with status text
+                throw (error);
             };
             xhr.send();
         })

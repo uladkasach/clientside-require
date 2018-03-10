@@ -15,7 +15,9 @@ var clientside_require = {
     /*
         define modules root
     */
-    this.modules_root = (typeof window.node_modules_root == "undefined")? location.origin + "/node_modules/" : window.node_modules_root; // default assumes that the node_modules root is at location origin
+    modules_root : (typeof window.node_modules_root == "undefined")?
+        window.location.origin + "/node_modules/" : // default assumes that the node_modules root is at location origin
+        window.node_modules_root, // else if defined use defined root
 
     /*
         define the cache - a singleton
@@ -85,3 +87,4 @@ var clientside_require = {
 */
 if(typeof window.require_global == "undefined") window.require_global = {}; // initialize require_global by default if not already initialized
 var require = clientside_require.require; // create global `require` function
+if(typeof module !== "undefined" && typeof module.exports != "undefined") module.exports = clientside_require; // export module if module.exports is defined
