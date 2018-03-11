@@ -1,4 +1,3 @@
-var clientside_require = require("./../index.js");
 /*
     retreival_manager handles placing requests to load content. handles sync and async requires.
 */
@@ -8,20 +7,18 @@ module.exports = {
     */
     utils : {
         loader_functions : require("./loading_utilities/scoped.js"),
-        normalize_path : require("./request_analysis/normalize_path.js"),
         promise_to_decompose_request : require("./request_analysis/decompose_request.js"),
-        promise_dependencies_are_loaded : require("./sync_dependencies_managment/promise_dependencies_loaded.js"),
     },
 
     /*
         the bread and butter
             - parse the request, load the file, resolve the content
     */
-    promise_to_retreive_content : async function(cache_path, request, options){
+    promise_to_retreive_content : async function(cache_path, modules_root, request, options){
         /*
             extract request details for this request
         */
-        var request_details = await this.utils.promise_to_decompose_request(request, options.relative_path_root, options.injection_require_type)
+        var request_details = await this.utils.promise_to_decompose_request(request, modules_root, options.relative_path_root, options.injection_require_type)
 
         /*
             load dependencies into cache before loading the main file
@@ -52,7 +49,7 @@ module.exports = {
             - takes list of 'dependencies' as input and loads each of them into cache
             - waits untill all are fully loaded in cache before resolving
     */
-    promise_dependencies_loaded : async function(dependencies, relative_path_root){ // load dependencies for synchronous injected require types
+    promise_dependencies_are_loaded : async function(dependencies, relative_path_root){ // load dependencies for synchronous injected require types
         /*
             normalize input
         */
@@ -72,7 +69,7 @@ module.exports = {
         var promises_to_cache_each = [];
         for(var i = 0; i < dependencies.length; i++){ // promise to load each dependency
             let dependency = dependencies[i]; //
-            var this_promise = clientside_require.asynchronous_require(dependency, dependency_options) // call async require to cache the module
+            var this_promise = window.clientside_require.asynchronous_require(dependency, dependency_options) // call async require to cache the module
                 .catch((err)=>{
                     console.warn("could not load dependency " + dependency + " found in " + relative_path_root);
                 })

@@ -29,11 +29,11 @@ var decomposer = {
         /*
             return the data
         */
-        return ["js", path, injection_require_type]; // promise all data to be generated
+        return {extension:"js", path:path, injection_require_type:injection_require_type}; // promise all data to be generated
     },
     promise_to_decompose_valid_file_request : function(request, extension, injection_require_type){
         var path = request; // since its not defining a module, the request has path information
-        return [extension, path, injection_require_type];
+        return {extension:extension, path:path, injection_require_type:injection_require_type};
     },
 
     /*
@@ -55,30 +55,25 @@ var decomposer = {
     }
 
 }
-var decompose_request = async function(request, relative_path_root, injection_require_type){
-    var [request, analysis] = normalize_path(request, relative_path_root);
-    var is_a_path = analysis.is_a_path;
-    var extension = analysis.extension;
-    var exists_valid_extension = analysis.exists_valid_extension;
-    var is_a_module = analysis.is_a_module;
+var decompose_request = async function(request, modules_root, relative_path_root, injection_require_type){
+    var [request, analysis] = normalize_path(request, modules_root, relative_path_root);
 
     /*
         retreive based on request anaylsis
     */
-    if(is_a_module){ // if not a path and no file extension, assume its a node_module.
+    if(analysis.is_a_module){ // if not a path and no file extension, assume its a node_module.
         var details = await decomposer.promise_to_decompose_module_request(request);
-    } else if(is_a_path && exists_valid_extension){ // if its an acceptable extension and not defining a module
-        var details = await decomposer.promise_to_decompose_valid_file_request(request, injection_require_type);
+    } else if(analysis.is_a_path && analysis.exists_valid_extension){ // if its an acceptable extension and not defining a module
+        var details = await decomposer.promise_to_decompose_valid_file_request(request, analysis.extension, injection_require_type);
     } else {
         throw new Error("request is not a module and is not a path with a valid extension. it can not be fulfilled.");
     }
 
-
     /*
         retreive dependencies if nessesary
     */
-    if(injection_require_type == "sync" && extension == "js"){
-        var path_dependencies = await find_dependencies_in_js_file(path); // get paths this main file is dependent on (recursivly)
+    if(details.injection_require_type == "sync" && details.extension == "js"){
+        var path_dependencies = await decomposer.find_dependencies_in_js_file(details.path); // get paths this main file is dependent on (recursivly)
     } else {
         var path_dependencies = [];
     }
@@ -89,9 +84,10 @@ var decompose_request = async function(request, relative_path_root, injection_re
     var finalized_details = {
         type : details.extension,
         path : details.path,
-        injection_require_type : injection_require_type, // tells the loader what kind of require function to inject for js files
-        dependencies : dependencies,
+        injection_require_type : details.injection_require_type, // tells the loader what kind of require function to inject for js files
+        dependencies : path_dependencies,
     }
+    return finalized_details;
 }
 
 module.exports = decompose_request;

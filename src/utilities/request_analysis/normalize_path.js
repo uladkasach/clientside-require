@@ -4,6 +4,12 @@
         - used for generate requst details (where to load file)
 */
 var normalize_path = function(path, modules_root, relative_path_root){
+    /*
+        normalize modules_root and relative_path_root
+    */
+    if(modules_root.slice(-1) != "/") var modules_root = modules_root + "/"; // append the "/" to the end
+    if(relative_path_root.slice(-1) != "/") var relative_path_root = relative_path_root + "/"; // append the "/" to the end
+
     var extension_whitelist = ["js", "json", "css", "html"];
 
     /*
@@ -40,6 +46,9 @@ var normalize_path = function(path, modules_root, relative_path_root){
     }
     if(is_a_module){
         path = modules_root + path + "/package.json"; // convert path to packagejson path
+        extension = "json";
+        exists_file_extension = true;
+        exists_valid_extension = true;
     }
     if(path.indexOf("://") == -1){ // if :// does not exist in string, assume that no origin is defined (origin = protocol + host)
         path = window.location.origin + path; // and simply append the locations origin. that is how the browser would treat the path in the first place

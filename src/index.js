@@ -43,7 +43,7 @@ var clientside_require = {
 
         // ensure request is cached
         if(this.cache.get(cache_path) == null){ // if not in cache, build into cache
-            var promise_content = this.retreiver.promise_to_retreive_content(request, options);
+            var promise_content = this.retreiver.promise_to_retreive_content(cache_path, this.modules_root, request, options);
             this.cache.set(cache_path, promise_content)
         }
 
@@ -68,16 +68,7 @@ var clientside_require = {
         helper utilities
     */
     util : {
-        normalize_request_options : function(options){
-            if(typeof options == "undefined") options = {}; // ensure options are defined
-            if(typeof options.relative_path_root == "undefined"){ // if relative path root not defined, default to dir based on location path
-                var current_path = window.location.href;
-                options.relative_path_root = current_path.substring(0, current_path.lastIndexOf("/")) + "/";
-            };
-            if(typeof options.injection_require_type == "undefined"){ // if injection require type is not defined, default to async
-                options.injection_require_type = "async";
-            }
-        },
+        normalize_request_options : require("./utilities/normalize_request_options");
     }
 
 }
