@@ -68,7 +68,7 @@ var clientside_require = {
         helper utilities
     */
     util : {
-        normalize_request_options : require("./utilities/normalize_request_options");
+        normalize_request_options : require("./utilities/normalize_request_options"),
     }
 
 }

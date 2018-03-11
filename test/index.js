@@ -24,12 +24,14 @@ window.XMLHttpRequest = xmlhttprequest.XMLHttpRequest; // append XMLHttpRequest 
     define a clientside_require object that can be used to mimic clientside_require object for tests
         - used by components/retreive
         - used by utilities/content_loading/commonjs.js
+    NOTE: it gets overwritten in full_module/basic.js after we know that clientside_require can be initialized
 */
 window.clientside_require = {
     asynchronous_require : function(request, options){
         return Promise.resolve(request);
     },
     synchronous_require : function(request, options){
+        if(typeof request == "undefined") request = "not defined"; // cast it to string anyway
         return request;
     }
 }
@@ -54,10 +56,6 @@ describe('components', function(){
     require('./components/retreive')
 })
 
-describe('integrated', function(){
-    it('should initialize', function(){
-        this.skip();
-        var clientside_require = require(process.env.src_root + '/index.js');
-        //console.log(clientside_require);
-    })
+describe('full module', function(){
+    require('./full_module/basic');
 })
