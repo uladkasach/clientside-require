@@ -1,3 +1,5 @@
+var normalize_path = require("./utilities/request_analysis/normalize_path.js");
+
 module.exports = {
     /*
         data structures
@@ -8,9 +10,8 @@ module.exports = {
     /*
         methods
     */
-    generate_cache_path_for_request : function(request, options){
-        var relative_path_root = options_handler.extract_relative_path_root(options);
-        var [path, analysis] = this.normalize_and_analyze_request_path(request, relative_path_root);
+    generate_cache_path_for_request : function(request, modules_root, options){
+        var [path, analysis] = normalize_path(request, modules_root, options.relative_path_root);
         var cache_path = path; // define cachepath as path to file with content. For modules, defines path to package.json
         if(analysis.is_a_module) cache_path = "module:" + cache_path; // since modules return package.json request, distinguish between module requests and actual requests to package.json
         return cache_path;
@@ -28,7 +29,7 @@ module.exports = {
         this._data.promise[cache_path] = promise_content; // set promise
         this._data.promise[cache_path]
             .then((content)=>{
-                this._data.content = content; // set content after promise resolves
+                this._data.content[cache_path] = content; // set content after promise resolves
             })
         return true;
     },

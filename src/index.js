@@ -39,7 +39,7 @@ var clientside_require = {
     asynchronous_require : async function(module_or_path, options){
         // normalize and analyze request
         var options = this.util.normalize_request_options(options);
-        var cache_path = this.cache.generate_cache_path_for_request(module_or_path, options);
+        var cache_path = this.cache.generate_cache_path_for_request(module_or_path, this.modules_root, options);
 
         // ensure request is cached
         if(this.cache.get(cache_path) == null){ // if not in cache, build into cache
@@ -60,7 +60,7 @@ var clientside_require = {
     */
     synchronous_require : function(request, options){
         var options = this.util.normalize_request_options(options);
-        var cache_path = this.cache.generate_cache_path_for_request(module_or_path, options);
+        var cache_path = this.cache.generate_cache_path_for_request(module_or_path, this.modules_root, options);
         return this.cache.get(cache_path, "content");
     },
 
