@@ -10,15 +10,29 @@ var xmlhttprequest = require("xmlhttprequest");
 /*
     provision environment to mimic browser environment
     - provision the window (specifically document & location)
-    - provision the xmlhttprequest
+        - provision the xmlhttprequest in the window as well
 */
 global.window = new jsdom.JSDOM(``,{
     url: "http://clientside-require.localhost/",
     resources: "usable", // load iframes and other resources
-    runScripts : "dangerously", // enable loading of scripts
+    runScripts : "dangerously", // enable loading of scripts - dangerously is fine since we are running code we wrote.
 }).window;
-global.XMLHttpRequest = xmlhttprequest.XMLHttpRequest;
-window.XMLHttpRequest = XMLHttpRequest; // append XMLHttpRequest to window
+window.XMLHttpRequest = xmlhttprequest.XMLHttpRequest; // append XMLHttpRequest to window
+
+
+/*
+    define a clientside_require object that can be used to mimic clientside_require object for tests
+        - used by components/retreive
+        - used by utilities/content_loading/commonjs.js
+*/
+window.clientside_require = {
+    asynchronous_require : function(request, options){
+        return Promise.resolve(request);
+    },
+    synchronous_require : function(request, options){
+        return request;
+    }
+}
 
 
 /*
@@ -37,6 +51,7 @@ describe('utilities', function(){
 })
 describe('components', function(){
     require('./components/cache')
+    require('./components/retreive')
 })
 
 describe('integrated', function(){

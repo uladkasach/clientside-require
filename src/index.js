@@ -43,7 +43,7 @@ var clientside_require = {
 
         // ensure request is cached
         if(this.cache.get(cache_path) == null){ // if not in cache, build into cache
-            var promise_content = this.retreiver.promise_to_retreive_content(cache_path, this.modules_root, request, options);
+            var promise_content = this.retreiver.promise_to_retreive_content(request, this.modules_root, options);
             this.cache.set(cache_path, promise_content)
         }
 

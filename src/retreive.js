@@ -6,15 +6,15 @@ module.exports = {
         define utils
     */
     utils : {
-        loader_functions : require("./loading_utilities/scoped.js"),
-        promise_to_decompose_request : require("./request_analysis/decompose_request.js"),
+        loader_functions : require("./utilities/content_loading/scoped.js"),
+        promise_to_decompose_request : require("./utilities/request_analysis/decompose_request.js"),
     },
 
     /*
         the bread and butter
             - parse the request, load the file, resolve the content
     */
-    promise_to_retreive_content : async function(cache_path, modules_root, request, options){
+    promise_to_retreive_content : async function(request, modules_root, options){
         /*
             extract request details for this request
         */
@@ -27,7 +27,7 @@ module.exports = {
         if(request_details.injection_require_type == "sync"){
             // this is the main (and most obvious) downfall of synchronous_require; waiting until all dependencies load.
             var dependency_relative_path_root = request_details.path.substring(0, request_details.path.lastIndexOf("/")) + "/";
-            await this.promise_dependencies_are_loaded(request.dependencies, dependency_relative_path_root); // wait untill dependencies are loaded
+            await this.promise_dependencies_are_loaded(request_details.dependencies, dependency_relative_path_root); // wait untill dependencies are loaded
         }
 
         /*

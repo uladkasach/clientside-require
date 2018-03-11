@@ -15,7 +15,7 @@ module.exports = {
     },
     promise_to_retreive_json : function(json_source){
         return new Promise((resolve, reject)=>{
-            var xhr = new XMLHttpRequest();
+            var xhr = new window.XMLHttpRequest();
             xhr.open("GET", json_source, true);
             xhr.onload = function(){
                 if(this.status == "404") throw {type : "404"};
@@ -51,7 +51,7 @@ module.exports = {
     },
     promise_to_get_content_from_file : function(destination_path){
         return new Promise((resolve, reject)=>{
-            var xhr = new XMLHttpRequest();
+            var xhr = new window.XMLHttpRequest();
             xhr.open("GET", destination_path, true);
             xhr.onload = function(){
                 resolve(this.responseText)

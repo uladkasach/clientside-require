@@ -17,21 +17,13 @@ describe('commonjs', function(){
     })
     it('should be able to generate require function to inject - async', async function(){
         var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-        window.clientside_require = { // define a placeholder clientside_require function that we can test which require funciton was injected based on
-            asynchronous_require : function(){return "async"},
-            synchronous_require : function(){return "sync"}
-        };
         var require_function = commonjs_loader.helpers.generate_require_function_to_inject("relative/path/root/test.ext", "async");
-        assert.equal(require_function(), "async", "require function should be async")
+        assert.equal(typeof require_function(), "object", "sync require function should return a promise")
     })
     it('should be able to generate require function to inject - sync', async function(){
         var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-        window.clientside_require = { // define a placeholder clientside_require function that we can test which require funciton was injected based on
-            asynchronous_require : function(){return "async"},
-            synchronous_require : function(){return "sync"}
-        };
         var require_function = commonjs_loader.helpers.generate_require_function_to_inject("relative/path/root/test.ext", "sync");
-        assert.equal(require_function(), "sync", "require function should be sync")
+        assert.equal(typeof require_function(), "string", "sync require function should return a string")
     })
     it('should be able to provision iframe environment', async function(){
         var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
@@ -62,10 +54,6 @@ describe('commonjs', function(){
     })
     it('integration: should be able to retreive exports with scope preserved', async function(){
         var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-        window.clientside_require = { // define a placeholder clientside_require function
-            asynchronous_require : function(){return "async"},
-            synchronous_require : function(){return "sync"}
-        };
         var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.js_commonjs, "async");
         assert.equal(exports.foo, "bar", "value extracted correctly");
         assert(typeof window.module == "undefined", "global scope not polluted");
