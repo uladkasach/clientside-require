@@ -36,7 +36,7 @@ module.exports = {
         this.provision.commonjs_variables(frame, require_function);
 
         // load the javascript into the environment
-        await this.helpers.load_module_into_frame(frame);
+        await this.helpers.load_module_into_frame(path, frame);
 
         // extract the CommonJS-specified exports
         var exports = await this.helpers.extract_exports_from_frame(frame);

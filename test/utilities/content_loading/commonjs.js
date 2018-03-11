@@ -13,7 +13,7 @@ describe('commonjs', function(){
     })
     it('should be able to create an iframe', async function(){
         var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-        await commonjs_loader.helpers.promise_to_create_frame();
+        return commonjs_loader.helpers.promise_to_create_frame()
     })
     it('should be able to generate require function to inject - async', async function(){
         var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
@@ -46,18 +46,28 @@ describe('commonjs', function(){
         commonjs_loader.provision.commonjs_variables(frame, null);
         commonjs_loader.helpers.load_module_into_frame(test_paths.js_commonjs, frame);
     })
-    it('should be able to retreive CommonJS exports while preserving scope', async function(){
+    it('should be able to retreive CommonJS-style exports while preserving scope', async function(){
         var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
         var frame = await commonjs_loader.helpers.promise_to_create_frame();
         commonjs_loader.provision.commonjs_variables(frame, null);
         await commonjs_loader.helpers.load_module_into_frame(test_paths.js_commonjs, frame);
         var exports = await commonjs_loader.helpers.extract_exports_from_frame(frame);
         assert.equal(exports.foo, "bar", "value extracted correctly");
-        assert(typeof window.module == "undefined"); // global scope not polluted
+        assert(typeof window.module == "undefined", "global scope not polluted");
     })
     it('should be able to remove frame from dom', async function(){
         var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
         var frame = await commonjs_loader.helpers.promise_to_create_frame();
         commonjs_loader.helpers.remove_frame(frame);
+    })
+    it('integration: should be able to retreive exports with scope preserved', async function(){
+        var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
+        window.clientside_require = { // define a placeholder clientside_require function
+            asynchronous_require : function(){return "async"},
+            synchronous_require : function(){return "sync"}
+        };
+        var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.js_commonjs, "async");
+        assert.equal(exports.foo, "bar", "value extracted correctly");
+        assert(typeof window.module == "undefined", "global scope not polluted");
     })
 })
