@@ -1,3 +1,3 @@
-module.exports = {
+var test_variable = {
     foo : "bar",
 }

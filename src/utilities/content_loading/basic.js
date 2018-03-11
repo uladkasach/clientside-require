@@ -5,7 +5,7 @@ module.exports = {
     promise_to_load_script_into_document : function(script_src, target_document){
         if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
         return new Promise((resolve, reject)=>{
-            var script = document.createElement('script');
+            var script = target_document.createElement('script');
             script.setAttribute("src", script_src);
             script.onload = function(){
                 resolve(target_document);
@@ -36,12 +36,15 @@ module.exports = {
         if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
         // <link rel="stylesheet" type="text/css" href="/_global/CSS/spinners.css">
         return new Promise((resolve, reject)=>{
-            var styles = document.createElement('link');
+            var styles = target_document.createElement('link');
             styles.type = "text/css";
             styles.rel = 'stylesheet';
             styles.href = styles_href;
             styles.onload = function(){
                 resolve(target_document);
+            };
+            styles.onerror = function(error){
+                throw error;
             };
             target_document.getElementsByTagName('head')[0].appendChild(styles);
         })

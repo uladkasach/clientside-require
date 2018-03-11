@@ -1,4 +1,5 @@
 process.env.src_root = __dirname + "/../src";
+process.env.test_env_root = __dirname + "/_env"
 
 /*
     load testing dependencies
