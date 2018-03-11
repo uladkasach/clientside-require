@@ -16,8 +16,14 @@ global.window = new jsdom.JSDOM(``,{
     resources: "usable", // load iframes and other resources
     runScripts : "dangerously", // enable loading of scripts
 }).window;
-global.XMLHttpRequest = xmlhttprequest.XMLHttpRequest;
+/*
+window.XMLHttpRequest = function(message){ // mimic alert function
+    console.log("ALERT: " + message);
+}
+*/
 
+global.XMLHttpRequest = xmlhttprequest.XMLHttpRequest;
+window.XMLHttpRequest = XMLHttpRequest; // append XMLHttpRequest to window
 /*
     define modules root for testing
 */
@@ -32,6 +38,7 @@ global.XMLHttpRequest = xmlhttprequest.XMLHttpRequest;
 describe('utilities', function(){
     describe("content_loading", function(){
         require("./utilities/content_loading/basic");
+        require("./utilities/content_loading/commonjs");
     })
     describe("request_analysis", function(){
         require('./utilities/request_analysis/normalize_path')
