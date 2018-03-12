@@ -1,5 +1,5 @@
 var assert = require("assert");
-var modules_root = "file:///"+ process.env.test_env_root + "/node_modules";
+var modules_root = "file:///"+ process.env.test_env_root + "/custom_node_modules";
 var default_options = require(process.env.src_root + "/utilities/normalize_request_options.js")();
 
 /*

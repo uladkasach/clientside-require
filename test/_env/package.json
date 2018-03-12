@@ -1,0 +1,16 @@
+{
+  "name": "testing_environment",
+  "version": "0.0.0",
+  "description": "environment for tests to operate in",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "private": true,
+  "dependencies": {
+    "color-name": "^1.1.3",
+    "qs": "^6.5.1"
+  }
+}

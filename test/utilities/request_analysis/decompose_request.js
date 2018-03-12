@@ -1,5 +1,5 @@
 var assert = require("assert");
-var modules_root = "file:///"+ process.env.test_env_root + "/node_modules";
+var modules_root = "file:///"+ process.env.test_env_root + "/custom_node_modules";
 var normalize_options = require(process.env.src_root + "/utilities/normalize_request_options.js");
 var relative_path_root = normalize_options().relative_path_root;
 
@@ -23,7 +23,7 @@ describe('decompose_request', async function(){
         var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
         assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/node_modules/async/index.js', "path should be accurate");
+        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/async/index.js', "path should be accurate");
         assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
         assert.equal(details.dependencies.length, 0, "there should be no dependencies");
     })
@@ -33,7 +33,7 @@ describe('decompose_request', async function(){
         var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
         assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/node_modules/async_main/src/index.js', "path should be accurate");
+        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/async_main/src/index.js', "path should be accurate");
         assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
         assert.equal(details.dependencies.length, 0, "there should be no dependencies");
     })

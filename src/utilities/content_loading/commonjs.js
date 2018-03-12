@@ -92,8 +92,8 @@ module.exports = {
             var relative_path_root = path_to_file.substring(0, path_to_file.lastIndexOf("/")) + "/"; //  path to this file without the filename
 
             // get require function based on injection type
-            if(injection_type == "async") var require_function = window.clientside_require.asynchronous_require;
-            if(injection_type == "sync") var require_function = window.clientside_require.synchronous_require;
+            if(injection_type == "async") var require_function = window.clientside_require.asynchronous_require.bind(window.clientside_require);
+            if(injection_type == "sync") var require_function = window.clientside_require.synchronous_require.bind(window.clientside_require);
             if(typeof require_function == "undefined") throw new Error("require function definition invalid");
 
             // build the require function to inject

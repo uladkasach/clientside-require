@@ -43,7 +43,7 @@ var clientside_require = {
 
         // ensure request is cached
         if(this.cache.get(cache_path) == null){ // if not in cache, build into cache
-            var promise_content = this.retreiver.promise_to_retreive_content(request, this.modules_root, options);
+            var promise_content = this.retreiver.promise_to_retreive_content(module_or_path, this.modules_root, options);
             this.cache.set(cache_path, promise_content)
         }
 
@@ -58,7 +58,7 @@ var clientside_require = {
             - the function is automatically injected into said environment
             - synchronous require expects all dependencies to already be loaded into cache
     */
-    synchronous_require : function(request, options){
+    synchronous_require : function(module_or_path, options){
         var options = this.util.normalize_request_options(options);
         var cache_path = this.cache.generate_cache_path_for_request(module_or_path, this.modules_root, options);
         return this.cache.get(cache_path, "content");
