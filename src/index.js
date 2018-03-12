@@ -77,5 +77,5 @@ var clientside_require = {
     inject "require" and "require_global" into browser context globally
 */
 if(typeof window.require_global == "undefined") window.require_global = {}; // initialize require_global by default if not already initialized
-var require = clientside_require.require; // create global `require` function
+window.require = clientside_require.asynchronous_require.bind(clientside_require); // create global `require` function
 if(typeof module !== "undefined" && typeof module.exports != "undefined") module.exports = clientside_require; // export module if module.exports is defined
