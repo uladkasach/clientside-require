@@ -2,7 +2,7 @@
   "name": "clientside-require",
   "version": "3.8.3",
   "description": "require() modules, js, css, html, and json in the browser with as little effort as loading jquery",
-  "main": "src/index.js",
+  "main": "build/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
