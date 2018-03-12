@@ -33,4 +33,8 @@ module.exports = {
             })
         return true;
     },
+    reset : function(){
+        this._data = {promise : {}, content : {}},
+        this._unique_requests = [];
+    },
 }

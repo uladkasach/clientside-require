@@ -8,7 +8,7 @@ describe('test_modules', function(){
 
         // retreive module
         var content = await clientside_require.asynchronous_require("async");
-        console.log(content);
+        var unique_requsts = clientside_require.cache._unique_requests;
         assert.equal(content.foo, "bar");
     })
     it('should have cached the module', async function(){

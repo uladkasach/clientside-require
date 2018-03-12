@@ -25,7 +25,7 @@ describe('cache', function(){
     })
     it('should set and retreive data accurately', async function(){
         var cache = require(process.env.src_root + "/cache.js");
-        var cache_path = cache.generate_cache_path_for_request("async", modules_root, default_options);
+        var cache_path = cache.generate_cache_path_for_request("./path/to/a/file.js", modules_root, default_options);
 
         // set data
         var data_promise = Promise.resolve("the data");
