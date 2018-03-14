@@ -54,6 +54,7 @@ module.exports = {
     provision : {
         clientside_require_variables : function(frame){ // clientside_require specific variables
             frame.contentWindow.require_global = window.require_global; // pass by reference require global
+            frame.contentWindow.clientside_require = window.clientside_require; // pass by reference the clientside_require object
         },
         browser_variables : function(frame){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality

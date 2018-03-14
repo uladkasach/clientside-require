@@ -2,7 +2,8 @@
   "name": "clientside-require",
   "version": "3.9.1",
   "description": "require() modules, js, css, html, and json in the browser with as little effort as loading jquery",
-  "main": "dist/bundle.js",
+  "main": "src/index.js",
+  "bundle": "dist/bundle.js",
   "scripts": {
     "build": "browserify src/index.js -o dist/bundle.js",
     "test": "mocha"

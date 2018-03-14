@@ -5,6 +5,13 @@
 */
 var normalize_path = function(path, modules_root, relative_path_root){
     /*
+        validate that path is a potentially usable string
+    */
+    if(typeof path == "undefined") throw new Error("path is undefined");
+    if(path == null) throw new Error("path is null");
+    if(path.replace(/\s/g,'') == "") throw new Error("path is empty - all whitespace");
+
+    /*
         normalize modules_root and relative_path_root
     */
     if(modules_root.slice(-1) != "/") var modules_root = modules_root + "/"; // append the "/" to the end
