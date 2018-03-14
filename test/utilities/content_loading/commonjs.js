@@ -5,6 +5,8 @@ var test_paths = {
     js : "file:///"+ process.env.test_env_root + "/basic_content/test_js.js",
     js_commonjs : "file:///"+ process.env.test_env_root + "/basic_content/test_js_commonjs.js",
     reference_clientside_require : "file:///"+ process.env.test_env_root + "/test_js/reference_clientside_require_in_module.js",
+    reference_window : "file:///"+ process.env.test_env_root + "/test_js/reference_window_in_module.js",
+
 }
 var assert = require("assert");
 
@@ -62,7 +64,12 @@ describe('commonjs', function(){
         })
     })
     describe("loaded environment", function(){
-        it("window.clientside_require should be defined in the modules environment", async function(){
+        it('should define window in the modules environment', async function(){
+            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
+            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_window, "async");
+            assert.equal(typeof exports, "object", "window.clientside_require should be defined");
+        })
+        it("should define window.clientside_require in the modules environment", async function(){
             var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
             var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_clientside_require, "async");
             assert.equal(typeof exports, "object", "window.clientside_require should be defined");
