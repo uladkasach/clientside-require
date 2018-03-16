@@ -42,7 +42,7 @@ module.exports = {
         var exports = await this.helpers.extract_exports_from_frame(frame);
 
         // destroy the frame now that we have the exports
-        this.helpers.remove_frame(frame);
+        if(typeof process == "undefined") this.helpers.remove_frame(frame); // do not remove iframe if we are using in node context (meaning we are using jsdom). TODO (#29) - figure how to preserve the window object (specifically window.document) after iframe is removed from parent   
 
         // return the exports
         return exports;
