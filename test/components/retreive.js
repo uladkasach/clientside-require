@@ -24,4 +24,14 @@ describe('retreive', function(){
         assert.equal(content.deps[0], "dep-one", "dependency one was loaded correctly")
         assert.equal(content.deps[1], "dep-two", "dependency two was loaded correctly")
     })
+    it('should throw an informative error when the path is not valid', async function(){
+        this.skip();
+        /*
+            jsdom does not percolate the error thrown when a resource is not found - so this is not yet possible.
+        */
+        var retreive = require(process.env.src_root + "/retreive.js");
+        var request = "http://error_path.localhost/file.js"; // some invalid js file
+        var content = await retreive.promise_to_retreive_content(request, modules_root, default_options);
+        console.log(content)
+    })
 })
