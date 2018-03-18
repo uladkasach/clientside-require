@@ -38,6 +38,9 @@ module.exports = {
         // load the javascript into the environment
         await this.helpers.load_module_into_frame(path, frame);
 
+        // for node environment w/ js dom - detect if any errors have occured while loading - await so that the errors it throws peroclate
+        if(typeof process != "undefined") await this.evaluate_errors(frame.contentWindow.error_list, path); // if node environment
+
         // extract the CommonJS-specified exports
         var exports = await this.helpers.extract_exports_from_frame(frame);
 
@@ -49,12 +52,25 @@ module.exports = {
     },
 
     /*
+        evaluate errors
+    */
+    evaluate_errors : async function(errors, path){
+        if(errors.indexOf("Unexpected token <") > -1){ // jsdom throws this error if file is not found
+            throw new Error("File did not resolve with a script. Is the uri `"+path+"` accurate?")
+        }
+    },
+
+    /*
         provisioning utilities
     */
     provision : {
         clientside_require_variables : function(frame){ // clientside_require specific variables
             frame.contentWindow.require_global = window.require_global; // pass by reference require global
             frame.contentWindow.clientside_require = window.clientside_require; // pass by reference the clientside_require object
+            frame.contentWindow.error_list = []; // define error holder list
+            frame.contentWindow.onerror = function(error){ // define function which appends each error to the error list
+                frame.contentWindow.error_list.push(error);
+            }
         },
         browser_variables : function(frame){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality
