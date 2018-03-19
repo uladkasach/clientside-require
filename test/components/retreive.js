@@ -24,4 +24,21 @@ describe('retreive', function(){
         assert.equal(content.deps[0], "dep-one", "dependency one was loaded correctly")
         assert.equal(content.deps[1], "dep-two", "dependency two was loaded correctly")
     })
+    it('should throw an error if the file does not exist', async function(){
+        this.skip();
+        /*
+            in the browser a 404 error is automatically thrown. only w/ jsdom in node do we get obscure messages for this.
+            not implementing any time soon. seperate branch exists for a potential implementation.
+        */
+    })
+    it('should throw an error if the module does not exist', async function(){
+        var retreive = require(process.env.src_root + "/retreive.js");
+        var request = "non-existant-module"; // sync_dependencies module
+        try {
+            var content = await retreive.promise_to_retreive_content(request, modules_root, default_options);
+            throw new Error("should not reach here");
+        } catch (error){
+            assert.equal(error.message, "404", "error should be `404`");
+        }
+    })
 })

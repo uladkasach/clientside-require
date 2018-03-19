@@ -31,6 +31,9 @@ module.exports = {
             .then((content)=>{
                 this._data.content[cache_path] = content; // set content after promise resolves
             })
+            .catch((error)=>{ // remove self from cache if there was an error
+                delete this._data.promise[cache_path];
+            })
         return true;
     },
     reset : function(){

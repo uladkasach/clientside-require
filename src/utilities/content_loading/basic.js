@@ -4,33 +4,18 @@
 module.exports = {
     promise_to_load_script_into_document : function(script_src, target_document){
         if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
-        return new Promise((resolve, reject)=>{
+        var loading_promise = new Promise((resolve, reject)=>{
             var script = target_document.createElement('script');
             script.setAttribute("src", script_src);
             script.onload = function(){
                 resolve(target_document);
             };
+            script.onerror = function(error){
+                reject(error);
+            }
             target_document.getElementsByTagName('head')[0].appendChild(script);
         })
-    },
-    promise_to_retreive_json : function(json_source){
-        return new Promise((resolve, reject)=>{
-            var xhr = new window.XMLHttpRequest();
-            xhr.open("GET", json_source, true);
-            xhr.onload = function(){
-                if(this.status == "404") throw {type : "404"};
-                try {
-                    resolve(JSON.parse(this.responseText));
-                } catch (err){
-                    throw (err);
-                }
-            };
-            xhr.onerror = function(error){
-                if(typeof error == "undefined") error = this.statusText; // if error is not defined, atleast resolve with status text
-                throw (error);
-            };
-            xhr.send();
-        })
+        return loading_promise;
     },
     promise_to_load_css_into_document : function(styles_href, target_document){
         if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
@@ -44,7 +29,7 @@ module.exports = {
                 resolve(target_document);
             };
             styles.onerror = function(error){
-                throw error;
+                reject(error);
             };
             target_document.getElementsByTagName('head')[0].appendChild(styles);
         })
@@ -54,13 +39,31 @@ module.exports = {
             var xhr = new window.XMLHttpRequest();
             xhr.open("GET", destination_path, true);
             xhr.onload = function(){
+                var status_string = this.status + "";
+                if(status_string[0] == "4") return reject(new Error(this.status));
+                if(status_string[0] == "5") return reject(new Error(this.status));
                 resolve(this.responseText)
             };
             xhr.onerror = function(error){
                 if(typeof error == "undefined") error = this.statusText; // if error is not defined, atleast resolve with status text
-                throw (error);
+                if(error.code == "ENOENT") return reject(new Error("404")); // maps not found node file:/// requests to 404 response
+                return reject(error);
             };
             xhr.send();
         })
+    },
+    promise_to_retreive_json : async function(json_source){
+        // get text from file
+        var content = await this.promise_to_get_content_from_file(json_source);
+
+        // cast data to json
+        try {
+            var data = (JSON.parse(content));
+        } catch (err){
+            throw (err);
+        }
+
+        // resolve with response
+        return data;
     },
 }

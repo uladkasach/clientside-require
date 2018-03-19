@@ -37,41 +37,55 @@ describe('decompose_request', async function(){
         assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
         assert.equal(details.dependencies.length, 0, "there should be no dependencies");
     })
-    it('should find module is async if defined in package_json', async function(){
+    it('should throw error if module can not be found', async function(){
         var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
-        var request = "async";
-        var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
-
-        assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
-        assert.equal(details.dependencies.length, 0, "there should be no dependencies");
+        var request = "non-existant-module";
+        try {
+            var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
+            throw new Error("should not reach here");
+        } catch (error){
+            assert.equal(error.message, "404", "error should be `404`");
+        }
     })
-    it('should find module is sync if not defined in package_json', async function(){
-        var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
-        var request = "sync_main";
-        var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
+    describe('injection request type for modules', function(){
+        it('should find module is async if defined in package_json', async function(){
+            var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
+            var request = "async";
+            var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
-        assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.injection_require_type, "sync", "injection_require_type should be async");
-        assert.equal(details.dependencies.length, 0, "there should be no dependencies");
+            assert.equal(details.type, "js", "type should be js");
+            assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
+            assert.equal(details.dependencies.length, 0, "there should be no dependencies");
+        })
+        it('should find module is sync if not defined in package_json', async function(){
+            var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
+            var request = "sync_main";
+            var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
+
+            assert.equal(details.type, "js", "type should be js");
+            assert.equal(details.injection_require_type, "sync", "injection_require_type should be async");
+            assert.equal(details.dependencies.length, 0, "there should be no dependencies");
+        })
     })
-    it('should not find find dependencies for async require injection with require statements', async function(){
-        var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
-        var request = "async_dependencies";
-        var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
+    describe('sync dependencies', function(){
+        it('should not find find dependencies for async require injection with require statements', async function(){
+            var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
+            var request = "async_dependencies";
+            var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
-        assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
-        assert.equal(details.dependencies.length, 0, "there should be no dependencies");
-    })
-    it('should find dependencies accurately for sync require injection', async function(){
-        var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
-        var request = "sync_dependencies";
-        var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
+            assert.equal(details.type, "js", "type should be js");
+            assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
+            assert.equal(details.dependencies.length, 0, "there should be no dependencies");
+        })
+        it('should find dependencies accurately for sync require injection', async function(){
+            var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
+            var request = "sync_dependencies";
+            var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
-        assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.injection_require_type, "sync", "injection_require_type should be async");
-        assert.equal(details.dependencies.length, 2, "there should be no dependencies");
-        assert.equal(details.dependencies[0] == "dep-one", details.dependencies[1] == "dep-two");
+            assert.equal(details.type, "js", "type should be js");
+            assert.equal(details.injection_require_type, "sync", "injection_require_type should be async");
+            assert.equal(details.dependencies.length, 2, "there should be no dependencies");
+            assert.equal(details.dependencies[0] == "dep-one", details.dependencies[1] == "dep-two");
+        })
     })
 })
