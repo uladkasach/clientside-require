@@ -52,7 +52,6 @@ describe('test_modules', function(){
             throw new Error("should not reach here");
         } catch (error){
             assert.equal(error.code, 404, "error code should be `404`")
-            assert.equal(error.message, "Request Error : 404 : http://test-env.clientside-require.localhost/custom_node_modules/nonexistant_module/package.json", "error message should be expected")
         }
     })
 })

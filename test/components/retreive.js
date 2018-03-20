@@ -39,7 +39,6 @@ describe('retreive', function(){
             throw new Error("should not reach here");
         } catch (error){
             assert.equal(error.code, 404, "error code should be `404`")
-            assert.equal(error.message, "Request Error : 404 : file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/non-existant-module/package.json", "error message should be expected")
         }
     })
 })
