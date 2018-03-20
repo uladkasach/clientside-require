@@ -40,13 +40,13 @@ module.exports = {
             xhr.open("GET", destination_path, true);
             xhr.onload = function(){
                 var status_string = this.status + "";
-                if(status_string[0] == "4") return reject(new Error(this.status));
-                if(status_string[0] == "5") return reject(new Error(this.status));
+                if(status_string[0] == "4") return reject(generate_xhr_error(this.status, destination_path));
+                if(status_string[0] == "5") return reject(generate_xhr_error(this.status, destination_path));
                 resolve(this.responseText)
             };
             xhr.onerror = function(error){
                 if(typeof error == "undefined") error = this.statusText; // if error is not defined, atleast resolve with status text
-                if(error.code == "ENOENT") return reject(new Error("404")); // maps not found node file:/// requests to 404 response
+                if(error.code == "ENOENT") return reject(generate_xhr_error(404, destination_path)); // maps not found node file:/// requests to 404 response
                 return reject(error);
             };
             xhr.send();
@@ -66,4 +66,16 @@ module.exports = {
         // resolve with response
         return data;
     },
+}
+
+
+/*
+    helper function
+*/
+var generate_xhr_error = function(status_code, path){
+    var message = "Request Error : 404 : " + path;
+    var code = status_code;
+    var error = new Error(message);
+    error.code = code;
+    return error;
 }

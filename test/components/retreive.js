@@ -38,7 +38,8 @@ describe('retreive', function(){
             var content = await retreive.promise_to_retreive_content(request, modules_root, default_options);
             throw new Error("should not reach here");
         } catch (error){
-            assert.equal(error.message, "404", "error should be `404`");
+            assert.equal(error.code, 404, "error code should be `404`")
+            assert.equal(error.message, "Request Error : 404 : file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/non-existant-module/package.json", "error message should be expected")
         }
     })
 })
