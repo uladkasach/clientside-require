@@ -1,7 +1,7 @@
 {
   "name": "clientside-require",
   "version": "3.9.8",
-  "description": "require() modules, js, css, html, and json in the browser with as little effort as loading jquery",
+  "description": "Node.js style require() statements in the browser. Load npm modules, js, html, css, json without any bundling required.",
   "main": "src/index.js",
   "bundle": "dist/bundle.js",
   "scripts": {
