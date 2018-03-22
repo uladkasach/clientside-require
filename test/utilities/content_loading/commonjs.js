@@ -6,6 +6,7 @@ var test_paths = {
     js_commonjs : "file:///"+ process.env.test_env_root + "/basic_content/test_js_commonjs.js",
     reference_clientside_require : "file:///"+ process.env.test_env_root + "/test_js/reference_clientside_require_in_module.js",
     reference_window : "file:///"+ process.env.test_env_root + "/test_js/reference_window_in_module.js",
+    reference_root_window : "file:///"+ process.env.test_env_root + "/test_js/reference_root_window_in_module.js",
 
 }
 var assert = require("assert");
@@ -75,6 +76,11 @@ describe('commonjs', function(){
             var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_clientside_require, "async");
             assert.equal(typeof exports, "object", "window.clientside_require should be defined");
             assert.equal(typeof exports.asynchronous_require, "function", "window.clientside_require.asynchronous_require should be defined");
+        })
+        it('should define window.root_window in the modules environment', async function(){
+            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
+            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_root_window, "async");
+            assert.equal(typeof exports, "object", "root_window should be defined");
         })
     })
 })
