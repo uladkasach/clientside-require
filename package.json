@@ -1,6 +1,6 @@
 {
   "name": "clientside-require",
-  "version": "3.10.2",
+  "version": "3.11.1",
   "description": "Node.js style require() statements in the browser. Load npm modules, js, html, css, json without any bundling required.",
   "main": "src/index.js",
   "bundle": "dist/bundle.js",
