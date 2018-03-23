@@ -1,7 +1,7 @@
 /*
     basic resource loading methods that do not nessesarily preserve scope
 */
-module.exports = {
+var basic_loaders = {
     promise_to_load_script_into_document : function(script_src, target_document){
         if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
         var loading_promise = new Promise((resolve, reject)=>{
@@ -67,6 +67,22 @@ module.exports = {
         return data;
     },
 }
+module.exports = basic_loaders;
+
+
+/*
+// Testing Utility
+var proxy_handler = {
+    get: function(obj, prop) {
+        return function(arg_1, arg_2){
+            console.log("getting file at path :" + arg_1);
+            return obj[prop](arg_1, arg_2);
+        }
+    }
+};
+var proxied_loaders = new Proxy(basic_loaders, proxy_handler);
+module.exports = proxied_loaders;
+*/
 
 
 /*
