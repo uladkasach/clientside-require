@@ -34,7 +34,7 @@ If the npm package you are loading contains `require()` statements, the clientsi
 
 Short Version: `require()` is available to `load()`'ed scripts.
 
-See [this explanation]() for the long version.
+See [this explanation](#load--vs--require) for the long version.
 
 
 
