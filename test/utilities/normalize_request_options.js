@@ -9,9 +9,4 @@ describe("normalize_request_options", function(){
         var options = normalize_options();
         assert.equal(options.relative_path_root, "http://clientside-require.localhost/", "relative path root default is valid")
     })
-    it('should default injection type to async', function(){
-        var normalize_options = require(process.env.src_root + "/utilities/normalize_request_options.js");
-        var options = normalize_options();
-        assert.equal(options.injection_require_type, "async", "default injection require type is valid")
-    })
 })

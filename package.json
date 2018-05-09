@@ -1,7 +1,7 @@
 {
   "name": "clientside-require",
-  "version": "3.11.1",
-  "description": "Node.js style require() statements in the browser. Load npm modules, js, html, css, json without any bundling required.",
+  "version": "4.0.0",
+  "description": "Node.js style require() statements in the browser. Load npm modules, js, html, css, json without any bundling.",
   "main": "src/index.js",
   "bundle": "dist/bundle.js",
   "scripts": {
@@ -27,14 +27,16 @@
     "bower",
     "browserify",
     "commonjs",
-    "npm"
+    "npm",
+    "import"
   ],
   "author": "UladKasach",
   "license": "AGPL-3.0",
   "devDependencies": {
     "browserify": "^16.1.1",
     "jsdom": "^11.6.2",
-    "mocha": "^5.0.4",
+    "mocha": "^5.1.1",
     "xmlhttprequest": "^1.8.0"
-  }
+  },
+  "dependencies": {}
 }

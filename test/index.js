@@ -60,4 +60,5 @@ describe('full_module', function(){
     require('./full_module/basic');
     require('./full_module/test_modules');
     require('./full_module/node_modules');
+    require('./full_module/load_and_require.js');
 })

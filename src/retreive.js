@@ -18,16 +18,21 @@ module.exports = {
         /*
             extract request details for this request
         */
-        var request_details = await this.utils.promise_to_decompose_request(request, modules_root, options.relative_path_root, options.injection_require_type)
+        var request_details = await this.utils.promise_to_decompose_request(
+            request, // a relative path, absolute path, or module name
+            modules_root, // defines where to look for modules
+            options.relative_path_root, // defines where the relative path should start from
+            options.search_for_dependencies // modules can define to not search for dependencies on their own, overriding the user
+        );
 
         /*
             load dependencies into cache before loading the main file
                 - recursive operation
         */
-        if(request_details.injection_require_type == "sync"){
-            // this is the main (and most obvious) downfall of synchronous_require; waiting until all dependencies load.
+        if(request_details.search_for_dependencies){
+            // this is the main (and most obvious) downside to synchronous_require; waiting until all dependencies load.
             var dependency_relative_path_root = request_details.path.substring(0, request_details.path.lastIndexOf("/")) + "/";
-            await this.promise_dependencies_are_loaded(request_details.dependencies, dependency_relative_path_root); // wait untill dependencies are loaded
+            await this.promise_dependencies_are_loaded(request_details.dependencies, dependency_relative_path_root, request_details.search_for_dependencies); // wait untill dependencies are loaded
         }
 
         /*
@@ -35,7 +40,7 @@ module.exports = {
                 - handles scoping and env setup of js files (retreives content based on CommonJS exports)
                 - supports js, css, html, json, txt, etc
         */
-        var content = await this.utils.loader_functions[request_details.type](request_details.path, request_details.injection_require_type);
+        var content = await this.utils.loader_functions[request_details.type](request_details.path);
 
         /*
             resolve with content
@@ -49,7 +54,7 @@ module.exports = {
             - takes list of 'dependencies' as input and loads each of them into cache
             - waits untill all are fully loaded in cache before resolving
     */
-    promise_dependencies_are_loaded : async function(dependencies, relative_path_root){ // load dependencies for synchronous injected require types
+    promise_dependencies_are_loaded : async function(dependencies, relative_path_root, search_for_dependencies){ // load dependencies for synchronous injected require types
         /*
             normalize input
         */
@@ -57,10 +62,12 @@ module.exports = {
 
         /*
             define dependency options to be used for caching the modules
+                - pass relative path root
         */
         var dependency_options = {
-            relative_path_root:relative_path_root,
-            injection_require_type : "sync", // sync modules can only use other sync modules
+            relative_path_root:relative_path_root, // pass relative path root
+            search_for_dependencies:search_for_dependencies, // NOTE: this will always be : true. We inject it though to make it clear why that is the case.
+                                                             //     and do not worry - if a future module states that it should search for its dependencies, we still will, as the option will be overwritten by that modules settings
         };
 
         /*

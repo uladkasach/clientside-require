@@ -14,27 +14,27 @@ describe('decompose_request', async function(){
 
         assert.equal(details.type, "css", "type should be css");
         assert.equal(details.path, 'http://clientside-require.localhost/path/to/file.css', "path should be accurate");
-        assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
+        assert.equal(details.search_for_dependencies, false, "search_for_dependencies should be false for css");
         assert.equal(details.dependencies.length, 0, "there should be no dependencies");
     })
     it('should find module path accurately - not defined in json', async function(){
         var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
-        var request = "async";
+        var request = "sync";
         var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
         assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/async/index.js', "path should be accurate");
-        assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
+        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/sync/index.js', "path should be accurate");
+        assert.equal(details.search_for_dependencies, true, "search_for_dependencies should be true for this module");
         assert.equal(details.dependencies.length, 0, "there should be no dependencies");
     })
     it('should find module path accurately - defined in json', async function(){
         var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
-        var request = "async_main";
+        var request = "sync_main";
         var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
         assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/async_main/src/index.js', "path should be accurate");
-        assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
+        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/sync_main/src/index.js', "path should be accurate");
+        assert.equal(details.search_for_dependencies, true, "search_for_dependencies should be false for this module");
         assert.equal(details.dependencies.length, 0, "there should be no dependencies");
     })
     it('should throw error if module can not be found', async function(){
@@ -47,34 +47,32 @@ describe('decompose_request', async function(){
             assert.equal(error.code, 404, "error code should be `404`")
         }
     })
-    describe('injection request type for modules', function(){
-        it('should find module is async if defined in package_json', async function(){
-            var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
-            var request = "async";
-            var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
-
-            assert.equal(details.type, "js", "type should be js");
-            assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
-            assert.equal(details.dependencies.length, 0, "there should be no dependencies");
-        })
-        it('should find module is sync if not defined in package_json', async function(){
+    describe('search_for_dependencies respecting module settings', function(){
+        it('should find search_for_dependencies true for package which does not specify', async function(){
             var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
             var request = "sync_main";
             var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
             assert.equal(details.type, "js", "type should be js");
-            assert.equal(details.injection_require_type, "sync", "injection_require_type should be async");
-            assert.equal(details.dependencies.length, 0, "there should be no dependencies");
+            assert.equal(details.search_for_dependencies, true, "search_for_dependencies should be true");
+        })
+        it('should find search_for_dependencies false for package which defines itself as async', async function(){
+            var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
+            var request = "async";
+            var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
+
+            assert.equal(details.type, "js", "type should be js");
+            assert.equal(details.search_for_dependencies, false, "search_for_dependencies should be false");
         })
     })
     describe('sync dependencies', function(){
-        it('should not find find dependencies for async require injection with require statements', async function(){
+        it('should not find dependencies if search_for_dependencies is false', async function(){
             var promise_to_decompose_request = require(process.env.src_root + "/utilities/request_analysis/decompose_request.js");
             var request = "async_dependencies";
             var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
             assert.equal(details.type, "js", "type should be js");
-            assert.equal(details.injection_require_type, "async", "injection_require_type should be async");
+            assert.equal(details.search_for_dependencies, false, "search_for_dependencies should be false");
             assert.equal(details.dependencies.length, 0, "there should be no dependencies");
         })
         it('should find dependencies accurately for sync require injection', async function(){
@@ -83,8 +81,8 @@ describe('decompose_request', async function(){
             var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
             assert.equal(details.type, "js", "type should be js");
-            assert.equal(details.injection_require_type, "sync", "injection_require_type should be async");
-            assert.equal(details.dependencies.length, 2, "there should be no dependencies");
+            assert.equal(details.search_for_dependencies, true, "search_for_dependencies should be true");
+            assert.equal(details.dependencies.length, 2, "there should be 2 dependencies");
             assert.equal(details.dependencies[0] == "dep-one", details.dependencies[1] == "dep-two");
         })
     })

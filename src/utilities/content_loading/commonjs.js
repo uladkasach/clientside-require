@@ -23,15 +23,16 @@ var basic_loaders = require("./basic.js");
 */
 
 module.exports = {
-    promise_to_retreive_exports : async function(path, injection_require_type){
+    promise_to_retreive_exports : async function(path){
         //create frame and define environmental variables
         var frame = await this.helpers.promise_to_create_frame();
 
         // generate require function to inject
-        var require_function = this.helpers.generate_require_function_to_inject(path, injection_require_type);
+        var load_function = this.helpers.generate_require_function_to_inject(path, "async");
+        var require_function = this.helpers.generate_require_function_to_inject(path, "sync");
 
         // provision the environment of the frame
-        this.provision.clientside_require_variables(frame);
+        this.provision.clientside_require_variables(frame, load_function);
         this.provision.browser_variables(frame);
         this.provision.commonjs_variables(frame, require_function);
 
@@ -52,10 +53,11 @@ module.exports = {
         provisioning utilities
     */
     provision : {
-        clientside_require_variables : function(frame){ // clientside_require specific variables
+        clientside_require_variables : function(frame, load_function){ // clientside_require specific variables
             frame.contentWindow.require_global = window.require_global; // pass by reference require global
             frame.contentWindow.clientside_require = window.clientside_require; // pass by reference the clientside_require object
             frame.contentWindow.root_window = window; // pass the root window (browser window) to the module so it can use it if needed
+            frame.contentWindow.load = load_function; // inject the load function
         },
         browser_variables : function(frame){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality
@@ -89,7 +91,7 @@ module.exports = {
             var frame_document = frame.contentWindow.document;
             await basic_loaders.promise_to_load_script_into_document(path_to_file, frame_document); // load the js into the document and wait untill completed
         },
-        generate_require_function_to_inject : function(path_to_file, injection_type){
+        generate_require_function_to_inject : function(path_to_file, injection_type){ // handle passing of relative_path_root
             // extract relative path root
             var relative_path_root = path_to_file.substring(0, path_to_file.lastIndexOf("/")) + "/"; //  path to this file without the filename
 

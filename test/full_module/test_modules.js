@@ -32,17 +32,17 @@ describe('test_modules', function(){
         var unique_requsts = clientside_require.cache._unique_requests;
         assert.equal(unique_requsts.length, 1);
     })
-        it('should be able to load a module - http', async function(){
-            // update clientside_require module
-            var clientside_require = require(process.env.src_root + '/index.js');
-            window.clientside_require = clientside_require;
-            clientside_require.modules_root = "http://test-env.clientside-require.localhost/custom_node_modules";
+    it('should be able to load a module - http', async function(){
+        // update clientside_require module
+        var clientside_require = require(process.env.src_root + '/index.js');
+        window.clientside_require = clientside_require;
+        clientside_require.modules_root = "http://test-env.clientside-require.localhost/custom_node_modules";
 
-            // retreive module
-            var content = await clientside_require.asynchronous_require("async");
-            var unique_requsts = clientside_require.cache._unique_requests;
-            assert.equal(content.foo, "bar");
-        })
+        // retreive module
+        var content = await clientside_require.asynchronous_require("async");
+        var unique_requsts = clientside_require.cache._unique_requests;
+        assert.equal(content.foo, "bar");
+    })
     it('should throw an error if the module does not exist', async function(){
         var clientside_require = require(process.env.src_root + '/index.js');
         window.clientside_require = clientside_require;
