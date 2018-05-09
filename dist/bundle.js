@@ -310,7 +310,7 @@ var clientside_require = {
 */
 if(typeof window.require_global == "undefined") window.require_global = {}; // initialize require_global by default if not already initialized
 window.clientside_require = clientside_require; // provision `clientside_require` to global scope
-window.require = clientside_require.asynchronous_require.bind(clientside_require); // provision `require` to global scope
+window.load = clientside_require.asynchronous_require.bind(clientside_require); // provision `require` to global scope
 if(typeof module !== "undefined" && typeof module.exports != "undefined") module.exports = clientside_require; // export module if module.exports is defined
 
 },{"./cache.js":2,"./retreive.js":4,"./utilities/normalize_request_options":8}],4:[function(require,module,exports){
@@ -334,16 +334,21 @@ module.exports = {
         /*
             extract request details for this request
         */
-        var request_details = await this.utils.promise_to_decompose_request(request, modules_root, options.relative_path_root, options.injection_require_type)
+        var request_details = await this.utils.promise_to_decompose_request(
+            request, // a relative path, absolute path, or module name
+            modules_root, // defines where to look for modules
+            options.relative_path_root, // defines where the relative path should start from
+            options.search_for_dependencies // modules can define to not search for dependencies on their own, overriding the user
+        );
 
         /*
             load dependencies into cache before loading the main file
                 - recursive operation
         */
-        if(request_details.injection_require_type == "sync"){
-            // this is the main (and most obvious) downfall of synchronous_require; waiting until all dependencies load.
+        if(request_details.search_for_dependencies){
+            // this is the main (and most obvious) downside to synchronous_require; waiting until all dependencies load.
             var dependency_relative_path_root = request_details.path.substring(0, request_details.path.lastIndexOf("/")) + "/";
-            await this.promise_dependencies_are_loaded(request_details.dependencies, dependency_relative_path_root); // wait untill dependencies are loaded
+            await this.promise_dependencies_are_loaded(request_details.dependencies, dependency_relative_path_root, request_details.search_for_dependencies); // wait untill dependencies are loaded
         }
 
         /*
@@ -351,7 +356,7 @@ module.exports = {
                 - handles scoping and env setup of js files (retreives content based on CommonJS exports)
                 - supports js, css, html, json, txt, etc
         */
-        var content = await this.utils.loader_functions[request_details.type](request_details.path, request_details.injection_require_type);
+        var content = await this.utils.loader_functions[request_details.type](request_details.path);
 
         /*
             resolve with content
@@ -365,7 +370,7 @@ module.exports = {
             - takes list of 'dependencies' as input and loads each of them into cache
             - waits untill all are fully loaded in cache before resolving
     */
-    promise_dependencies_are_loaded : async function(dependencies, relative_path_root){ // load dependencies for synchronous injected require types
+    promise_dependencies_are_loaded : async function(dependencies, relative_path_root, search_for_dependencies){ // load dependencies for synchronous injected require types
         /*
             normalize input
         */
@@ -373,10 +378,12 @@ module.exports = {
 
         /*
             define dependency options to be used for caching the modules
+                - pass relative path root
         */
         var dependency_options = {
-            relative_path_root:relative_path_root,
-            injection_require_type : "sync", // sync modules can only use other sync modules
+            relative_path_root:relative_path_root, // pass relative path root
+            search_for_dependencies:search_for_dependencies, // NOTE: this will always be : true. We inject it though to make it clear why that is the case.
+                                                             //     and do not worry - if a future module states that it should search for its dependencies, we still will, as the option will be overwritten by that modules settings
         };
 
         /*
@@ -404,7 +411,7 @@ module.exports = {
 /*
     basic resource loading methods that do not nessesarily preserve scope
 */
-module.exports = {
+var basic_loaders = {
     promise_to_load_script_into_document : function(script_src, target_document){
         if(typeof target_document == "undefined") target_document = window.document; // if no document is specified, assume its the window's document
         var loading_promise = new Promise((resolve, reject)=>{
@@ -470,6 +477,22 @@ module.exports = {
         return data;
     },
 }
+module.exports = basic_loaders;
+
+
+/*
+// Testing Utility
+var proxy_handler = {
+    get: function(obj, prop) {
+        return function(arg_1, arg_2){
+            console.log("getting file at path :" + arg_1);
+            return obj[prop](arg_1, arg_2);
+        }
+    }
+};
+var proxied_loaders = new Proxy(basic_loaders, proxy_handler);
+module.exports = proxied_loaders;
+*/
 
 
 /*
@@ -510,15 +533,16 @@ var basic_loaders = require("./basic.js");
 */
 
 module.exports = {
-    promise_to_retreive_exports : async function(path, injection_require_type){
+    promise_to_retreive_exports : async function(path){
         //create frame and define environmental variables
         var frame = await this.helpers.promise_to_create_frame();
 
         // generate require function to inject
-        var require_function = this.helpers.generate_require_function_to_inject(path, injection_require_type);
+        var load_function = this.helpers.generate_require_function_to_inject(path, "async");
+        var require_function = this.helpers.generate_require_function_to_inject(path, "sync");
 
         // provision the environment of the frame
-        this.provision.clientside_require_variables(frame);
+        this.provision.clientside_require_variables(frame, load_function);
         this.provision.browser_variables(frame);
         this.provision.commonjs_variables(frame, require_function);
 
@@ -539,10 +563,11 @@ module.exports = {
         provisioning utilities
     */
     provision : {
-        clientside_require_variables : function(frame){ // clientside_require specific variables
+        clientside_require_variables : function(frame, load_function){ // clientside_require specific variables
             frame.contentWindow.require_global = window.require_global; // pass by reference require global
             frame.contentWindow.clientside_require = window.clientside_require; // pass by reference the clientside_require object
             frame.contentWindow.root_window = window; // pass the root window (browser window) to the module so it can use it if needed
+            frame.contentWindow.load = load_function; // inject the load function
         },
         browser_variables : function(frame){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality
@@ -576,7 +601,7 @@ module.exports = {
             var frame_document = frame.contentWindow.document;
             await basic_loaders.promise_to_load_script_into_document(path_to_file, frame_document); // load the js into the document and wait untill completed
         },
-        generate_require_function_to_inject : function(path_to_file, injection_type){
+        generate_require_function_to_inject : function(path_to_file, injection_type){ // handle passing of relative_path_root
             // extract relative path root
             var relative_path_root = path_to_file.substring(0, path_to_file.lastIndexOf("/")) + "/"; //  path to this file without the filename
 
@@ -619,7 +644,7 @@ var commonjs_loader = require("./commonjs.js");
     TODO: find way to preserve scope with css styles
 */
 module.exports = {
-    js : function(path, injection_require_type){ return commonjs_loader.promise_to_retreive_exports(path, injection_require_type)},
+    js : function(path){ return commonjs_loader.promise_to_retreive_exports(path) },
     json : function(path){ return basic_loaders.promise_to_retreive_json(path) },
     html : function(path){ return basic_loaders.promise_to_get_content_from_file(path) },
     css : function(path){ return basic_loaders.promise_to_load_css_into_document(path) },
@@ -632,8 +657,9 @@ module.exports = function(options){
         var current_path = window.location.href;
         options.relative_path_root = current_path.substring(0, current_path.lastIndexOf("/")) + "/";
     };
-    if(typeof options.injection_require_type == "undefined"){ // if injection require type is not defined, default to async
-        options.injection_require_type = "async";
+    if(typeof options.async !== "undefined" && options.async === true) options.search_for_dependencies = false; // cast options.async = true into require_type = async
+    if(typeof options.search_for_dependencies == "undefined"){ // if search_for_dependencies is not defined, default to true
+        options.search_for_dependencies = true; // search for all require() dependencies
     }
     return options;
 }
@@ -659,22 +685,19 @@ var decomposer = {
         var path = base_path + main; // generate path based on the "main" data in the package json
 
         /*
-            determine if package requires sync require
+            determine if we should skip looking for dependencies for this package
         */
-        var package_options = package_json["clientside-require"];
-        var injection_type_async_not_in_package_options = (typeof package_options == "undefined" || typeof package_options.require_mode == "undefined" || package_options.require_mode !== "async");
-        var injection_type_async_not_in_package_json =  (typeof package_json == "undefined" || package_json.require_mode !== "async");
-        var injection_require_type = // define require mode for module; overwrites user selected and percolated injection_require_type passed as an argument to this function
-            (injection_type_async_not_in_package_json && injection_type_async_not_in_package_options)? "sync" : "async"; // either user injection_require_type="async", or we assume its "sync";
+        var search_for_dependencies = (typeof package_json == "undefined" || package_json.require_mode != "async");
 
         /*
             return the data
         */
-        return {extension:"js", path:path, injection_require_type:injection_require_type}; // promise all data to be generated
+        return {extension:"js", path:path, search_for_dependencies:search_for_dependencies}; // promise all data to be generated
     },
-    promise_to_decompose_valid_file_request : function(request, extension, injection_require_type){
+    promise_to_decompose_valid_file_request : function(request, extension, search_for_dependencies){
         var path = request; // since its not defining a module, the request has path information
-        return {extension:extension, path:path, injection_require_type:injection_require_type};
+        if(extension != "js") search_for_dependencies = false; // default to false if extension not js
+        return {extension:extension, path:path, search_for_dependencies:search_for_dependencies};
     },
 
     /*
@@ -696,7 +719,7 @@ var decomposer = {
     }
 
 }
-var decompose_request = async function(request, modules_root, relative_path_root, injection_require_type){
+var decompose_request = async function(request, modules_root, relative_path_root, search_for_dependencies){
     var [request, analysis] = normalize_path(request, modules_root, relative_path_root);
 
     /*
@@ -705,7 +728,7 @@ var decompose_request = async function(request, modules_root, relative_path_root
     if(analysis.is_a_module){ // if not a path and no file extension, assume its a node_module.
         var details = await decomposer.promise_to_decompose_module_request(request);
     } else if(analysis.is_a_path && analysis.exists_valid_extension){ // if its an acceptable extension and not defining a module
-        var details = await decomposer.promise_to_decompose_valid_file_request(request, analysis.extension, injection_require_type);
+        var details = await decomposer.promise_to_decompose_valid_file_request(request, analysis.extension, search_for_dependencies);
     } else {
         throw new Error("request is not a module and is not a path with a valid extension. it can not be fulfilled.");
     }
@@ -713,7 +736,7 @@ var decompose_request = async function(request, modules_root, relative_path_root
     /*
         retreive dependencies if nessesary
     */
-    if(details.injection_require_type == "sync" && details.extension == "js"){
+    if(details.search_for_dependencies && details.extension == "js"){
         var path_dependencies = await decomposer.find_dependencies_in_js_file(details.path); // get paths this main file is dependent on (recursivly)
     } else {
         var path_dependencies = [];
@@ -725,7 +748,7 @@ var decompose_request = async function(request, modules_root, relative_path_root
     var finalized_details = {
         type : details.extension,
         path : details.path,
-        injection_require_type : details.injection_require_type, // tells the loader what kind of require function to inject for js files
+        search_for_dependencies : details.search_for_dependencies, // tells the loader what kind of require function to inject for js files
         dependencies : path_dependencies,
     }
     return finalized_details;
