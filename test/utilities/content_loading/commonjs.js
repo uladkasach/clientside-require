@@ -102,6 +102,7 @@ describe('commonjs', function(){
             assert.equal(exports.href, "file:///var/www/git/More/clientside-require/test/_env/test_js/reference_location_in_module.js")
             assert.equal(exports.protocol, "file:")
             assert.equal(exports.pathname, "/var/www/git/More/clientside-require/test/_env/test_js/reference_location_in_module.js")
+            assert.equal(exports.pathdir, "/var/www/git/More/clientside-require/test/_env/test_js/")
         })
     })
 })

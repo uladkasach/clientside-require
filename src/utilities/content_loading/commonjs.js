@@ -78,6 +78,7 @@ module.exports = {
                 hostname : anchor.hostname,
                 port : anchor.port,
                 pathname : anchor.pathname,
+                pathdir : anchor.pathname.substring(0, anchor.pathname.lastIndexOf("/")) + "/", //  path to this file without the filename
             };
         },
         commonjs_variables : function(frame, require_function){ // CommonJS environment variables
