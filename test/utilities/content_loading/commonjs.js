@@ -9,6 +9,7 @@ var test_paths = {
     reference_load : "file:///"+ process.env.test_env_root + "/test_js/reference_load_in_module.js",
     reference_require : "file:///"+ process.env.test_env_root + "/test_js/reference_require_in_module.js",
     reference_root_window : "file:///"+ process.env.test_env_root + "/test_js/reference_root_window_in_module.js",
+    reference_location : "file:///"+ process.env.test_env_root + "/test_js/reference_location_in_module.js",
 
 }
 var assert = require("assert");
@@ -93,6 +94,14 @@ describe('commonjs', function(){
             var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
             var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_root_window, "async");
             assert.equal(typeof exports, "object", "root_window should be defined");
+        })
+        it('should define window.location in the modules environment accurately', async function(){
+            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
+            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_location, "async");
+            assert.equal(typeof exports, "object", "location should be defined");
+            assert.equal(exports.href, "file:///var/www/git/More/clientside-require/test/_env/test_js/reference_location_in_module.js")
+            assert.equal(exports.protocol, "file:")
+            assert.equal(exports.pathname, "/var/www/git/More/clientside-require/test/_env/test_js/reference_location_in_module.js")
         })
     })
 })

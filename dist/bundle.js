@@ -543,7 +543,7 @@ module.exports = {
 
         // provision the environment of the frame
         this.provision.clientside_require_variables(frame, load_function);
-        this.provision.browser_variables(frame);
+        this.provision.browser_variables(frame, path);
         this.provision.commonjs_variables(frame, require_function);
 
         // load the javascript into the environment
@@ -569,13 +569,26 @@ module.exports = {
             frame.contentWindow.root_window = window; // pass the root window (browser window) to the module so it can use it if needed
             frame.contentWindow.load = load_function; // inject the load function
         },
-        browser_variables : function(frame){ // browser environment variables (those not present in iframes)
+        browser_variables : function(frame, path){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality
             frame.contentWindow.alert = window.alert; // pass the alert functionality
             frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
             frame.contentWindow.prompt = window.prompt; // pass the prompt functionality
             frame.contentWindow.HTMLElement = window.HTMLElement; // pass HTMLElement object
             frame.contentWindow.XMLHttpRequest = window.XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
+
+            // define window.location; https://stackoverflow.com/a/736970/3068233
+            var anchor = window.document.createElement("a");
+            anchor.href = path;
+            frame.contentWindow.script_location = {
+                href : anchor.href,
+                origin : anchor.origin,
+                protocol : anchor.protocol,
+                host : anchor.host,
+                hostname : anchor.hostname,
+                port : anchor.port,
+                pathname : anchor.pathname,
+            };
         },
         commonjs_variables : function(frame, require_function){ // CommonJS environment variables
             frame.contentWindow.module = {exports : {}};
