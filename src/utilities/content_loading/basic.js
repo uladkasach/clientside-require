@@ -60,6 +60,7 @@ var basic_loaders = {
         try {
             var data = (JSON.parse(content));
         } catch (err){
+            console.error(err);
             throw (err);
         }
 
