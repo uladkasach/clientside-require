@@ -11,11 +11,15 @@ Simply serve the `clientside-require.js` file to a browser and enjoy one of life
 ```html
 <script src = "/path/to/clientside-require.js"></script>
 <script>
-    load(module_name__OR__abs_path__OR__rel_path) // WOW!
+    var promise_request = load("clientside-request") // loads the `clientside-request` npm package
+    var promise_utility = load("/path/to/utility.js") // loads a custom js script without poluting global scope
 </script>
 ```
 
 If the npm package you are loading contains `require()` statements, the clientside-require module's `load` method will automatically resolve (i.e., load) each dependency before loading the script - enabling the `require()` statement in the `load()`'ed script.
+
+For example, `/path/to/utility.js` can contain `require('relevant-npm-module')`, `require('./another_utility.js')`, or `require('./configuration.json')`.
+
 
 ## Benefits
 1. `npm` modules in the browser (i.e., reusability!)  
@@ -28,47 +32,13 @@ If the npm package you are loading contains `require()` statements, the clientsi
     - content is explicitly exported (CommonJS format - like used in Node.js)
         - `module.exports= ... `
 4. all imported content (load and require) is stored in the same cache and is only loaded once
-    - speedy
 
-## `load()`? What about `require()`?
+#### `load()`? What about `require()`?
 
 Short Version: `require()` is available to `load()`'ed scripts.
 
 See [this explanation](#load--vs--require) for the long version.
 
-
-
-
-## Usage Overview
-
-This package enables utilizing `npm` for clientside development. The node modules you `npm install` all the time can be utilized out of the box:
-
-```js
-load("qs") // asynchronously load a node module by module name; module was installed with `npm install qs`
-    .then((qs)=>{
-        var query_string = qs.stringify({foo:bar}); // foo=bar
-    })
-```
-
-In addition, you can load your own js functionality into the browser without polluting the  global scope:
-```js
-load("./util.js") // require a js file with a relative path
-    .then((exports)=>{
-        exports.awesome_functionality(); // where `exports` is defined by `model.exports` in `util.js`
-    })
-```
-
-Last but not least, with this `import()` function we can import any file type  (e.g., `js`, `json`, `html`, `css`, `txt`, etc):
-
-```js
-load("/path/to/html/file.html") // require a html file with an absolute path
-    .then((html)=>{
-        console.log(html)
-    })
-```
-
-
---------------------
 
 
 # Usage
@@ -91,61 +61,91 @@ load("/path/to/html/file.html") // require a html file with an absolute path
 
 If you intend to use node modules, please read this [configuration detail](#node_modules) to ensure the module works in all contexts. Otherwise, everything is setup by default already.
 
-### Examples
+# Examples
 
-We will assume for all of these examples that the `clientside-require` has already been loaded into the global scope.
+### Loading NPM Modules
+This package enables utilizing `npm` for clientside development. The node modules you `npm install` all the time can be utilized out of the box:
 
-#### load an npm package
-
-*``<script>`` inside of index.html*
 ```js
-var promise_color_name = load("color-name");
-promise_color_name
+load("qs") // asynchronously load a node module by module name; module was installed with `npm install qs`
+    .then((qs)=>{
+        var query_string = qs.stringify({foo:bar}); // foo=bar
+    })
+```
+
+or
+
+
+```js
+load("color-name")
     .then((color_name)=>{
         console.log(color_name.blue); // outputs  [0, 0, 255]
     })
 ```
 
-*directory structure*
+### Loading JS files
+In addition, you can load your own JS content into the browser without polluting the global scope:
+```js
+load("./util.js") // require a js file with a relative path
+    .then((exports)=>{
+        exports.awesome_functionality(); // where `exports` is defined by `model.exports` in `util.js`
+    })
 ```
-node_modules/
-    clientside-require/
-    color-name/
-index.html
+
+### Loading static content
+Further we can import any file type  (e.g., `js`, `json`, `html`, `css`, `txt`, etc):
+
+```js
+load("/path/to/config.json") // get contents of a json file file with an absolute path
+    .then((html)=>{
+        console.log(html)
+    })
 ```
 
-*Note, npm modules made for the clientside specifically are optimized for browser loading and usage! [See this for more info.](#async)*
+### Utilizing `require()` in JS scripts
+If we load a JS script with `load()`, we can use `require()` statements (in addition to `load()` statements) in the script. This allows us to write functionality just as we would on the serverside with node.js:
 
+`random_name_generator.js`:
+```js
+var list_of_names = require("./list_of_names.json");
+var random_selector = require("./random_selector.js");
+var random_name = random_selector.select(list_of_names);
+module.exports = random_name;
+```
 
-#### load a login_signup module and display login mode
+`index.html`:
+```js
+load("/path/to/random_name_generator.js")
+    .then((random_name)=>{
+        console.log(random_name)
+    })
+```
+
+### Creating a view element with [`clientside-view-loader`](https://github.com/uladkasach/clientside-view-loader)
 *This uses the [clientside-view-modal-login_signup](https://github.com/uladkasach/clientside-view-modal-login_signup) npm package. **Use the repo as an example for how you can create your own view module!***
 ```sh
 npm install clientside-view-modal-login_signup
 ```
 ```js
 load("clientside-view-loader")
-    .then((view)=>{
-        return view.load("clientside-view-modal-login_signup").generate();
-    })
-    .then((modal)=>{
-        document.body.appendChild(modal);
-        modal.show("login");
+    .then(view=>view.load("clientside-view-modal-login_signup").generate())
+    .then((dom)=>{
+        document.body.appendChild(dom); // append the dom to the document body
+        dom.show("login"); // display the login view
     })
 ```
-
 generates a fully functional one of these:
 
 ![screenshot_2018-02-10_15-42-31](https://user-images.githubusercontent.com/10381896/36066524-0dc14f7a-0e79-11e8-86c5-10a10b695185.png)
 
 
---------------------
 
 
 
 
-## Technical Overview
+# Technical Overview
 
-#### `load()` -vs- `require()`
+### load() -vs- require()
 
 Browsers do not permit dynamic synchronous loading as it as it ruins user experience. The only way to dynamically load a file into a web page requires asynchronous operations. The `load` method loads content in this way and returns a promise that resolves with the requested content.
 
@@ -153,15 +153,9 @@ When a script is `load()`'ed, we give it the `require()` method as the clientsid
 
 This allows us, after `load()`ing, to use the synchronous `require()` function in the browser.
 
-#### caching requests
+### caching requests
 All `require`'ed modules are cached to eliminate duplicate requests. The `require` function is injected into loaded scripts (e.g., module scripts) so that the cache is maintained in every file and module loaded.
 
-
---------------------
-
-
-
-## Fundamental Functionality : `load(request)`
 
 
 ### Paths
@@ -178,7 +172,7 @@ node_modules/
 root.html
 ```
 
-#### absolute path
+##### absolute path
 Absolute paths operate exactly as one would expect. A request to retrieve the file will be sent directly to that path.
 ```js
 // inside `root.html`
@@ -186,7 +180,7 @@ require("/awesome_directory/awesome_file.js")
     .then((exports)=>{/* ...magic... */})
 ```
 
-#### relative path
+##### relative path
 Relative paths operate exactly like you would expect, too! The `require()` function utilizes the `clientside-require` to keep track of the `path` to each file its loaded in.
 
 Not only can you do this:
@@ -204,7 +198,7 @@ require("./awesome_helper.js")
     .then((helper_exports)=>{ /* ... use the other scripts for even more magic ... */ })
 ```
 
-#### node_module name
+##### node_module name
 
 The `require(request)` function will assume any `request` that does not start with "/" and has no file extension is a `node_module` name. It will:
 1. find the root of the `node_module` by utilizing the [`node_module_root`](#node_modules)
@@ -224,9 +218,9 @@ The way that the `clientside-require` imports `js` enables the user to protect t
 As there is no way to provide scoping for `css`, `css` is loaded directly into the main window with global scope.
 
 
-## Configuration
+# Configuration
 
-#### node_modules
+### node_modules
 
 
 By default, the `clientside-require` expects the `node_modules` directory to be in the same directory as the file it is loaded in e.g.:
@@ -253,22 +247,14 @@ a_directory/
 
 
 
-## Restrictions
+### Restrictions
 
 #### scope
 Note, scope goes two ways. Not only does the namespace that you load not enter the main window, the namespace of the main window does not enter the namespace that you load. E.g., the clientside-require passes a reference to console so that it can output to the main window console and not an unreachable console.
 
---------------------
 
-## Example Native Packages
+# Example Native Packages
 npm packages written for the browser utilizing `clientside-require`:
 - [clientside-view-loader](https://github.com/uladkasach/clientside-view-loader)
 - [clientside-view-button](https://github.com/uladkasach/clientside-view-button)
 - [clientside-request](https://github.com/uladkasach/clientside-request) - mimics the npm `request` package for the browser
-
-
-## Pre-Caching
-
-Comming soon.
-
-This will enable creation of a script you can serve to the browser which will preinitialize the `require()` cache (e.g., load any set of modules and js files on page load)
