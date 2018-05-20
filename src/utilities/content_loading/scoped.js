@@ -7,7 +7,7 @@ var commonjs_loader = require("./commonjs.js");
     TODO: find way to preserve scope with css styles
 */
 module.exports = {
-    js : function(path){ return commonjs_loader.promise_to_retreive_exports(path) },
+    js : function(path, options){ return commonjs_loader.promise_to_retreive_exports(path, options) },
     json : function(path){ return basic_loaders.promise_to_retreive_json(path) },
     html : function(path){ return basic_loaders.promise_to_get_content_from_file(path) },
     css : function(path){ return basic_loaders.promise_to_load_css_into_document(path) },

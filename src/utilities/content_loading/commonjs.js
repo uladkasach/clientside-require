@@ -23,7 +23,7 @@ var basic_loaders = require("./basic.js");
 */
 
 module.exports = {
-    promise_to_retreive_exports : async function(path){
+    promise_to_retreive_exports : async function(path, options){
         //create frame and define environmental variables
         var frame = await this.helpers.promise_to_create_frame();
 
@@ -36,8 +36,15 @@ module.exports = {
         this.provision.browser_variables(frame, path);
         this.provision.commonjs_variables(frame, require_function);
 
+        // silence console.errors while loading js if log_loading_errors = false;
+        if(options.log_loading_errors === false) frame.contentWindow.console.error = function(){}; // empty function which does nothing;
+        console.error('test'); // test to ensure console.error still works
+
         // load the javascript into the environment
         await this.helpers.load_module_into_frame(path, frame);
+
+        // return console.errors after loading if log_loading_errors = false;
+        frame.contentWindow.console.error = window.console.error;
 
         // extract the CommonJS-specified exports
         var exports = await this.helpers.extract_exports_from_frame(frame);
@@ -59,7 +66,7 @@ module.exports = {
             frame.contentWindow.root_window = window; // pass the root window (browser window) to the module so it can use it if needed
             frame.contentWindow.load = load_function; // inject the load function
         },
-        browser_variables : function(frame, path){ // browser environment variables (those not present in iframes)
+        browser_variables : function(frame, path, log_loading_errors){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality
             frame.contentWindow.alert = window.alert; // pass the alert functionality
             frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
@@ -136,3 +143,38 @@ module.exports = {
     }
 
 }
+       it('should be possible to not pass loading errors when log_loading_errors = false', async function(){
+            this.skip(); // due to the testing environment we can not recreate the console.error log in the first place here.
+                         // This test must be evaluated manually. 
+
+            /*
+                setup testing environment
+            */
+            var original_console_error_function = window.console.error;
+            var times_error_reported = 0;
+            var replacement_console_error_function = function(message){
+                console.log("here i am!")
+                times_error_reported += 1;
+                original_console_error_function(message);
+            }
+            window.console.error = replacement_console_error_function; // replace the function
+
+            /*
+                conduct the test
+            */
+            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
+            try { // this will throw error since the file is not defined
+                var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.js_commonjs + "/", {log_loading_errors:false});
+            } catch(error) {
+                console.log(error);
+                console.log("^^^^error^^^^")
+            }
+            console.log(times_error_reported)
+
+            /*
+                return state to normal
+            */
+            window.console.error = original_console_error_function; // set back to normal
+        })
+    })
+})

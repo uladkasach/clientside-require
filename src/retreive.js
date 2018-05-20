@@ -40,7 +40,7 @@ module.exports = {
                 - handles scoping and env setup of js files (retreives content based on CommonJS exports)
                 - supports js, css, html, json, txt, etc
         */
-        var content = await this.utils.loader_functions[request_details.type](request_details.path);
+        var content = await this.utils.loader_functions[request_details.type](request_details.path, options);
 
         /*
             resolve with content

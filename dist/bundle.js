@@ -356,7 +356,7 @@ module.exports = {
                 - handles scoping and env setup of js files (retreives content based on CommonJS exports)
                 - supports js, css, html, json, txt, etc
         */
-        var content = await this.utils.loader_functions[request_details.type](request_details.path);
+        var content = await this.utils.loader_functions[request_details.type](request_details.path, options);
 
         /*
             resolve with content
@@ -470,6 +470,7 @@ var basic_loaders = {
         try {
             var data = (JSON.parse(content));
         } catch (err){
+            console.error(err);
             throw (err);
         }
 
@@ -533,7 +534,7 @@ var basic_loaders = require("./basic.js");
 */
 
 module.exports = {
-    promise_to_retreive_exports : async function(path){
+    promise_to_retreive_exports : async function(path, options){
         //create frame and define environmental variables
         var frame = await this.helpers.promise_to_create_frame();
 
@@ -546,8 +547,15 @@ module.exports = {
         this.provision.browser_variables(frame, path);
         this.provision.commonjs_variables(frame, require_function);
 
+        // silence console.errors while loading js if log_loading_errors = false;
+        if(options.log_loading_errors === false) frame.contentWindow.console.error = function(){}; // empty function which does nothing;
+        console.error('test'); // test to ensure console.error still works
+
         // load the javascript into the environment
         await this.helpers.load_module_into_frame(path, frame);
+
+        // return console.errors after loading if log_loading_errors = false;
+        frame.contentWindow.console.error = window.console.error;
 
         // extract the CommonJS-specified exports
         var exports = await this.helpers.extract_exports_from_frame(frame);
@@ -569,7 +577,7 @@ module.exports = {
             frame.contentWindow.root_window = window; // pass the root window (browser window) to the module so it can use it if needed
             frame.contentWindow.load = load_function; // inject the load function
         },
-        browser_variables : function(frame, path){ // browser environment variables (those not present in iframes)
+        browser_variables : function(frame, path, log_loading_errors){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality
             frame.contentWindow.alert = window.alert; // pass the alert functionality
             frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
@@ -588,6 +596,7 @@ module.exports = {
                 hostname : anchor.hostname,
                 port : anchor.port,
                 pathname : anchor.pathname,
+                pathdir : anchor.pathname.substring(0, anchor.pathname.lastIndexOf("/")) + "/", //  path to this file without the filename
             };
         },
         commonjs_variables : function(frame, require_function){ // CommonJS environment variables
@@ -657,7 +666,7 @@ var commonjs_loader = require("./commonjs.js");
     TODO: find way to preserve scope with css styles
 */
 module.exports = {
-    js : function(path){ return commonjs_loader.promise_to_retreive_exports(path) },
+    js : function(path, options){ return commonjs_loader.promise_to_retreive_exports(path, options) },
     json : function(path){ return basic_loaders.promise_to_retreive_json(path) },
     html : function(path){ return basic_loaders.promise_to_get_content_from_file(path) },
     css : function(path){ return basic_loaders.promise_to_load_css_into_document(path) },

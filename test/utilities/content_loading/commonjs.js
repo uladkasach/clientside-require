@@ -1,108 +1,180 @@
-var test_paths = {
-    json : "file:///"+ process.env.test_env_root + "/basic_content/test_json.json",
-    html : "file:///"+ process.env.test_env_root + "/basic_content/test_html.html",
-    css : "file:///"+ process.env.test_env_root + "/basic_content/test_css.css",
-    js : "file:///"+ process.env.test_env_root + "/basic_content/test_js.js",
-    js_commonjs : "file:///"+ process.env.test_env_root + "/basic_content/test_js_commonjs.js",
-    reference_clientside_require : "file:///"+ process.env.test_env_root + "/test_js/reference_clientside_require_in_module.js",
-    reference_window : "file:///"+ process.env.test_env_root + "/test_js/reference_window_in_module.js",
-    reference_load : "file:///"+ process.env.test_env_root + "/test_js/reference_load_in_module.js",
-    reference_require : "file:///"+ process.env.test_env_root + "/test_js/reference_require_in_module.js",
-    reference_root_window : "file:///"+ process.env.test_env_root + "/test_js/reference_root_window_in_module.js",
-    reference_location : "file:///"+ process.env.test_env_root + "/test_js/reference_location_in_module.js",
+var basic_loaders = require("./basic.js");
+/*
+    meat and potatoes of clientside-require:
+        1. loads modules in an iframe to preserve scope and returns the "exports" from the module
+            - passes environmental variables expected to be present for browsers
+                - console
+                - alert
+                - confirm
+                - prompt
+            - passes environmental variables expected to be present for CommonJS modules
+                - module
+                - exports
+                - require
+        2. determines whether to inject a synchronous or asynchronous require function
+            - if synchronous then we have already recursivly parsed all dependencies that the loaded file has and all dependencies are already cached and ready to use synchronously
+            - if asynchronous then we pass the regular clientside_require function which loads as usual
+*/
+
+/*
+    NOTE (important) : the contentWindow properties defined will be availible in the loaded modules BUT NOT availible to the clientside-module-manager;
+                        clientside module manager is only accessible by the contentWindow.require  function that is passed;
+                        the clientside-module-manager (this object) will have the same global window as the main file at ALL times.
+*/
+
+module.exports = {
+    promise_to_retreive_exports : async function(path, options){
+        //create frame and define environmental variables
+        var frame = await this.helpers.promise_to_create_frame();
+
+        // generate require function to inject
+        var load_function = this.helpers.generate_require_function_to_inject(path, "async");
+        var require_function = this.helpers.generate_require_function_to_inject(path, "sync");
+
+        // provision the environment of the frame
+        this.provision.clientside_require_variables(frame, load_function);
+        this.provision.browser_variables(frame, path);
+        this.provision.commonjs_variables(frame, require_function);
+
+        // silence console.errors while loading js if log_loading_errors = false;
+        if(options.log_loading_errors === false) frame.contentWindow.console.error = function(){}; // empty function which does nothing;
+        console.error('test'); // test to ensure console.error still works
+
+        // load the javascript into the environment
+        await this.helpers.load_module_into_frame(path, frame);
+
+        // return console.errors after loading if log_loading_errors = false;
+        frame.contentWindow.console.error = window.console.error;
+
+        // extract the CommonJS-specified exports
+        var exports = await this.helpers.extract_exports_from_frame(frame);
+
+        // destroy the frame now that we have the exports
+        if(typeof process == "undefined") this.helpers.remove_frame(frame); // do not remove iframe if we are using in node context (meaning we are using jsdom). TODO (#29) - figure how to preserve the window object (specifically window.document) after iframe is removed from parent
+
+        // return the exports
+        return exports;
+    },
+
+    /*
+        provisioning utilities
+    */
+    provision : {
+        clientside_require_variables : function(frame, load_function){ // clientside_require specific variables
+            frame.contentWindow.require_global = window.require_global; // pass by reference require global
+            frame.contentWindow.clientside_require = window.clientside_require; // pass by reference the clientside_require object
+            frame.contentWindow.root_window = window; // pass the root window (browser window) to the module so it can use it if needed
+            frame.contentWindow.load = load_function; // inject the load function
+        },
+        browser_variables : function(frame, path, log_loading_errors){ // browser environment variables (those not present in iframes)
+            frame.contentWindow.console = window.console; // pass the console functionality
+            frame.contentWindow.alert = window.alert; // pass the alert functionality
+            frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
+            frame.contentWindow.prompt = window.prompt; // pass the prompt functionality
+            frame.contentWindow.HTMLElement = window.HTMLElement; // pass HTMLElement object
+            frame.contentWindow.XMLHttpRequest = window.XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
+
+            // define window.location; https://stackoverflow.com/a/736970/3068233
+            var anchor = window.document.createElement("a");
+            anchor.href = path;
+            frame.contentWindow.script_location = {
+                href : anchor.href,
+                origin : anchor.origin,
+                protocol : anchor.protocol,
+                host : anchor.host,
+                hostname : anchor.hostname,
+                port : anchor.port,
+                pathname : anchor.pathname,
+                pathdir : anchor.pathname.substring(0, anchor.pathname.lastIndexOf("/")) + "/", //  path to this file without the filename
+            };
+        },
+        commonjs_variables : function(frame, require_function){ // CommonJS environment variables
+            frame.contentWindow.module = {exports : {}};
+            frame.contentWindow.exports = frame.contentWindow.module.exports; // create a reference from "exports" to modules.exports
+            frame.contentWindow.require = require_function; // inject the require function
+        },
+    },
+
+    /*
+        helper utilities
+    */
+    helpers : {
+        remove_frame : function(frame){
+            frame.parentNode.removeChild(frame);
+        },
+        extract_exports_from_frame : async function(frame){
+            var frame_document = frame.contentWindow.document;
+            var frame_window = frame_document.defaultView;
+            var exports = await frame_window.module.exports;
+            return exports;
+        },
+        load_module_into_frame : async function(path_to_file, frame){
+            var frame_document = frame.contentWindow.document;
+            await basic_loaders.promise_to_load_script_into_document(path_to_file, frame_document); // load the js into the document and wait untill completed
+        },
+        generate_require_function_to_inject : function(path_to_file, injection_type){ // handle passing of relative_path_root
+            // extract relative path root
+            var relative_path_root = path_to_file.substring(0, path_to_file.lastIndexOf("/")) + "/"; //  path to this file without the filename
+
+            // get require function based on injection type
+            if(injection_type == "async") var require_function = window.clientside_require.asynchronous_require.bind(window.clientside_require);
+            if(injection_type == "sync") var require_function = window.clientside_require.synchronous_require.bind(window.clientside_require);
+            if(typeof require_function == "undefined") throw new Error("require function definition invalid");
+
+            // build the require function to inject
+            var require_function_to_inject = function(request, options){
+                if(typeof options == "undefined") options = {}; // define options if not yet defined
+                options.relative_path_root = relative_path_root; // overwrite user defined rel path root - TODO - make this a private property
+                return require_function(request, options);
+            }
+
+            // return require function
+            return require_function_to_inject;
+        },
+        promise_to_create_frame : function(){
+            return new Promise((resolve, reject)=>{
+                //console.log("building promise");
+                var frame = window.document.createElement('iframe'); // always create the iframe in the root document
+                frame.onload = function(){resolve(frame)};
+                frame.style.display = "none"; // dont display the iframe
+                window.document.querySelector("html").appendChild(frame); // stick the document in the html element
+            })
+        }
+    }
 
 }
-var assert = require("assert");
+       it('should be possible to not pass loading errors when log_loading_errors = false', async function(){
+            this.skip(); // due to the testing environment we can not recreate the console.error log in the first place here.
+                         // This test must be evaluated manually. 
 
-describe('commonjs', function(){
-    describe('loading', function(){
-        it("should initialize", function(){
-            require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-        })
-        it('should be able to create an iframe', async function(){
+            /*
+                setup testing environment
+            */
+            var original_console_error_function = window.console.error;
+            var times_error_reported = 0;
+            var replacement_console_error_function = function(message){
+                console.log("here i am!")
+                times_error_reported += 1;
+                original_console_error_function(message);
+            }
+            window.console.error = replacement_console_error_function; // replace the function
+
+            /*
+                conduct the test
+            */
             var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            return commonjs_loader.helpers.promise_to_create_frame()
-        })
-        it('should be able to generate require function to inject - async', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var require_function = commonjs_loader.helpers.generate_require_function_to_inject("relative/path/root/test.ext", "async");
-            assert.equal(typeof require_function(), "object", "sync require function should return a promise")
-        })
-        it('should be able to generate require function to inject - sync', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var require_function = commonjs_loader.helpers.generate_require_function_to_inject("relative/path/root/test.ext", "sync");
-            assert.equal(typeof require_function(), "string", "sync require function should return a string")
-        })
-        it('should be able to provision iframe environment', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var frame = await commonjs_loader.helpers.promise_to_create_frame();
-            commonjs_loader.provision.clientside_require_variables(frame);
-            commonjs_loader.provision.browser_variables(frame);
-            commonjs_loader.provision.commonjs_variables(frame, null);
-        })
-        it('should be able to load js into iframe', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var frame = await commonjs_loader.helpers.promise_to_create_frame();
-            commonjs_loader.provision.commonjs_variables(frame, null);
-            commonjs_loader.helpers.load_module_into_frame(test_paths.js_commonjs, frame);
-        })
-        it('should be able to retreive CommonJS-style exports while preserving scope', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var frame = await commonjs_loader.helpers.promise_to_create_frame();
-            commonjs_loader.provision.commonjs_variables(frame, null);
-            await commonjs_loader.helpers.load_module_into_frame(test_paths.js_commonjs, frame);
-            var exports = await commonjs_loader.helpers.extract_exports_from_frame(frame);
-            assert.equal(exports.foo, "bar", "value extracted correctly");
-            assert(typeof window.module == "undefined", "global scope not polluted");
-        })
-        it('should be able to remove frame from dom', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var frame = await commonjs_loader.helpers.promise_to_create_frame();
-            commonjs_loader.helpers.remove_frame(frame);
-        })
-        it('integration: should be able to retreive exports with scope preserved', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.js_commonjs, "async");
-            assert.equal(exports.foo, "bar", "value extracted correctly");
-            assert(typeof window.module == "undefined", "global scope not polluted");
-        })
-    })
-    describe("loaded environment", function(){
-        it('should define window in the modules environment', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_window, "async");
-            assert.equal(typeof exports, "object", "window should be defined");
-            assert.equal(typeof exports.document, "object", "window.document should be defined");
-        })
-        it("should define window.clientside_require in the modules environment", async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_clientside_require, "async");
-            assert.equal(typeof exports, "object", "window.clientside_require should be defined");
-            assert.equal(typeof exports.asynchronous_require, "function", "window.clientside_require.asynchronous_require should be defined");
-        })
-        it('should define window.require in the modules environment', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_load, "async");
-            assert.equal(typeof exports, "function", "require method should be defined");
-        })
-        it('should define window.load in the modules environment', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_require, "async");
-            assert.equal(typeof exports, "function", "load method should be defined");
-        })
-        it('should define window.root_window in the modules environment', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_root_window, "async");
-            assert.equal(typeof exports, "object", "root_window should be defined");
-        })
-        it('should define window.location in the modules environment accurately', async function(){
-            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
-            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_location, "async");
-            assert.equal(typeof exports, "object", "location should be defined");
-            assert.equal(exports.href, "file:///var/www/git/More/clientside-require/test/_env/test_js/reference_location_in_module.js")
-            assert.equal(exports.protocol, "file:")
-            assert.equal(exports.pathname, "/var/www/git/More/clientside-require/test/_env/test_js/reference_location_in_module.js")
-            assert.equal(exports.pathdir, "/var/www/git/More/clientside-require/test/_env/test_js/")
+            try { // this will throw error since the file is not defined
+                var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.js_commonjs + "/", {log_loading_errors:false});
+            } catch(error) {
+                console.log(error);
+                console.log("^^^^error^^^^")
+            }
+            console.log(times_error_reported)
+
+            /*
+                return state to normal
+            */
+            window.console.error = original_console_error_function; // set back to normal
         })
     })
 })
