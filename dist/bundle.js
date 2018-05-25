@@ -1,4 +1,63 @@
-(function(){function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s}return e})()({1:[function(require,module,exports){
+(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+var sleep = function(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+
+/*
+    Dynamic_Serial_Promise_All :
+    - handles situations where we want to wait for a dynamic amount of serially dependent processes
+    - since we do not know in advance what processes we will want to wait for after a prior process resolves, we will have to "re-check" the promise list
+        - recheck :
+            - after original promises resolve
+            - if on recheck all promises resolve, wait another 100microseconds and recheck
+            - if second recheck succeeds, then we can be fairly confident we are done
+*/
+var Dynamic_Serial_Promise_All = function(safety_lap_wait_time){
+    if(typeof safety_lap_wait_time != "number") safety_lap_wait_time = 100;
+    this.safety_lap_wait_time = safety_lap_wait_time;
+    this.promise_list = [];
+}
+Dynamic_Serial_Promise_All.prototype = {
+    get promise_all(){
+        return this.promise_all_promises_have_resolved();
+    },
+    wait_for : function(promise){
+        this.promise_list.push(promise);
+    },
+    promise_all_promises_have_resolved : async function(bool_safety_lap){
+        /*
+            this function conducts Promise.all() on all current promises
+            after resolving, it checks if there are any new promises added.
+                - if added, run self again
+                - if not added, sleep for 100 milliseconds and run self again
+                    - if safty_lap run resolves and still no new promises, resolve completely.
+        */
+        // run promise all on all current promises
+        var original_promise_count = this.promise_list.length;
+        var result = await Promise.all(this.promise_list);
+
+        // check if promise count has changed
+        var now_promises_count = this.promise_list.length;
+        var promises_added = (original_promise_count != now_promises_count);
+
+        // act on change
+        if(promises_added){ // promises were added, wait untill all resolve again
+            return this.promise_all_promises_have_resolved();
+        } else if(bool_safety_lap===true){ // saftey lap was run and no change in promise count
+            return result;
+        } else {
+            await sleep(this.safety_lap_wait_time); // wait for 100 ms
+            return this.promise_all_promises_have_resolved(true); // run safety lap
+        }
+    },
+    reset : function(){
+        /*
+            utility function to cleanly empty the promise_list 
+        */
+        this.promise_list = [];
+    },
+}
+module.exports = Dynamic_Serial_Promise_All;
+
+},{}],2:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -184,7 +243,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],2:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 var normalize_path = require("./utilities/request_analysis/normalize_path.js");
 
 module.exports = {
@@ -229,7 +288,7 @@ module.exports = {
     },
 }
 
-},{"./utilities/request_analysis/normalize_path.js":10}],3:[function(require,module,exports){
+},{"./utilities/request_analysis/normalize_path.js":11}],4:[function(require,module,exports){
 /*
     Clientside Require Module
         - supports CommonJS require functionality in the browser
@@ -262,6 +321,15 @@ var clientside_require = {
     retreiver : require("./retreive.js"),
 
     /*
+        define the `promise_all` property, enabling users to determine when all `load`ing has completed
+            - this is useful for contexts such as server side rendering
+    */
+    promise_manager : new (require('dynamic-serial-promise-all'))(),
+    get promise_all(){
+        return this.promise_manager.promise_all;
+    },
+
+    /*
         asynchronous_require - the main method used
             - returns a promise which resolves with the requested content
             - places the request into cache so that content is only loaded once
@@ -276,6 +344,7 @@ var clientside_require = {
         // ensure request is cached
         if(this.cache.get(cache_path) == null){ // if not in cache, build into cache
             var promise_content = this.retreiver.promise_to_retreive_content(module_or_path, this.modules_root, options);
+            this.promise_manager.wait_for(promise_content); // ensure promise_manager waits for each `load` promise when determining all is loaded
             this.cache.set(cache_path, promise_content)
         }
 
@@ -313,7 +382,7 @@ window.clientside_require = clientside_require; // provision `clientside_require
 window.load = clientside_require.asynchronous_require.bind(clientside_require); // provision `require` to global scope
 if(typeof module !== "undefined" && typeof module.exports != "undefined") module.exports = clientside_require; // export module if module.exports is defined
 
-},{"./cache.js":2,"./retreive.js":4,"./utilities/normalize_request_options":8}],4:[function(require,module,exports){
+},{"./cache.js":3,"./retreive.js":5,"./utilities/normalize_request_options":9,"dynamic-serial-promise-all":1}],5:[function(require,module,exports){
 /*
     retreival_manager handles placing requests to load content. handles sync and async requires.
 */
@@ -407,7 +476,7 @@ module.exports = {
 
 }
 
-},{"./utilities/content_loading/scoped.js":7,"./utilities/request_analysis/decompose_request.js":9}],5:[function(require,module,exports){
+},{"./utilities/content_loading/scoped.js":8,"./utilities/request_analysis/decompose_request.js":10}],6:[function(require,module,exports){
 /*
     basic resource loading methods that do not nessesarily preserve scope
 */
@@ -470,6 +539,7 @@ var basic_loaders = {
         try {
             var data = (JSON.parse(content));
         } catch (err){
+            console.error(err);
             throw (err);
         }
 
@@ -506,7 +576,7 @@ var generate_xhr_error = function(status_code, path){
     return error;
 }
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 (function (process){
 var basic_loaders = require("./basic.js");
 /*
@@ -588,6 +658,7 @@ module.exports = {
                 hostname : anchor.hostname,
                 port : anchor.port,
                 pathname : anchor.pathname,
+                pathdir : anchor.pathname.substring(0, anchor.pathname.lastIndexOf("/")) + "/", //  path to this file without the filename
             };
         },
         commonjs_variables : function(frame, require_function){ // CommonJS environment variables
@@ -647,7 +718,7 @@ module.exports = {
 }
 
 }).call(this,require('_process'))
-},{"./basic.js":5,"_process":1}],7:[function(require,module,exports){
+},{"./basic.js":6,"_process":2}],8:[function(require,module,exports){
 var basic_loaders = require("./basic.js");
 var commonjs_loader = require("./commonjs.js");
 /*
@@ -663,7 +734,7 @@ module.exports = {
     css : function(path){ return basic_loaders.promise_to_load_css_into_document(path) },
 }
 
-},{"./basic.js":5,"./commonjs.js":6}],8:[function(require,module,exports){
+},{"./basic.js":6,"./commonjs.js":7}],9:[function(require,module,exports){
 module.exports = function(options){
     if(typeof options == "undefined") options = {}; // ensure options are defined
     if(typeof options.relative_path_root == "undefined"){ // if relative path root not defined, default to dir based on location path
@@ -677,7 +748,7 @@ module.exports = function(options){
     return options;
 }
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 var basic_loaders = require("./../content_loading/basic.js");
 var normalize_path = require("./normalize_path.js");
 /*
@@ -769,7 +840,7 @@ var decompose_request = async function(request, modules_root, relative_path_root
 
 module.exports = decompose_request;
 
-},{"./../content_loading/basic.js":5,"./normalize_path.js":10}],10:[function(require,module,exports){
+},{"./../content_loading/basic.js":6,"./normalize_path.js":11}],11:[function(require,module,exports){
 /*
     analyze and normalize path
         - used for cache_path
@@ -851,4 +922,4 @@ var normalize_path = function(path, modules_root, relative_path_root){
 
 module.exports = normalize_path;
 
-},{}]},{},[3]);
+},{}]},{},[4]);
