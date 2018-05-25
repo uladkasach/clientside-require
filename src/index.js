@@ -30,6 +30,15 @@ var clientside_require = {
     retreiver : require("./retreive.js"),
 
     /*
+        define the `promise_all` property, enabling users to determine when all `load`ing has completed
+            - this is useful for contexts such as server side rendering
+    */
+    promise_manager : new (require('dynamic-serial-promise-all'))(),
+    get promise_all(){
+        return this.promise_manager.promise_all;
+    },
+
+    /*
         asynchronous_require - the main method used
             - returns a promise which resolves with the requested content
             - places the request into cache so that content is only loaded once
@@ -44,6 +53,7 @@ var clientside_require = {
         // ensure request is cached
         if(this.cache.get(cache_path) == null){ // if not in cache, build into cache
             var promise_content = this.retreiver.promise_to_retreive_content(module_or_path, this.modules_root, options);
+            this.promise_manager.wait_for(promise_content); // ensure promise_manager waits for each `load` promise when determining all is loaded
             this.cache.set(cache_path, promise_content)
         }
 

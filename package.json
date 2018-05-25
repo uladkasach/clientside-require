@@ -1,6 +1,6 @@
 {
   "name": "clientside-require",
-  "version": "4.3.0",
+  "version": "4.4.0",
   "description": "Node.js style require() statements in the browser. Load npm modules, js, html, css, json without any bundling.",
   "main": "src/index.js",
   "bundle": "dist/bundle.js",
@@ -33,10 +33,12 @@
   "author": "UladKasach",
   "license": "AGPL-3.0",
   "devDependencies": {
-    "browserify": "^16.1.1",
-    "jsdom": "^11.6.2",
-    "mocha": "^5.1.1",
+    "browserify": "^16.2.2",
+    "jsdom": "^11.11.0",
+    "mocha": "^5.2.0",
     "xmlhttprequest": "^1.8.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "dynamic-serial-promise-all": "^1.1.0"
+  }
 }
