@@ -905,6 +905,15 @@ var normalize_path = function(path, modules_root, relative_path_root){
     }
 
     /*
+        clean the path, mimicking the browser in this functionality
+    */
+    var parts = path.split("://");
+    path_origin = parts[0];
+    path_uri = parts[1];
+    path_uri = path_uri.replace(/\/\/+/g, "/"); // replace all "//+" with "/"
+    path = [path_origin, path_uri].join("://");
+
+    /*
         build analysis object after all modifications and respond
     */
     var analysis = {
