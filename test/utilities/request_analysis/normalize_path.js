@@ -104,5 +104,13 @@ describe('normalize_path', function(){
             // validate path
             assert.equal(norm_path, "http://clientside-require.localhost/test_node_modules/test-module/package.json", "relative_path is accurate")
         })
+        it('should clean path with //+, like browsers do', function(){
+            var normalize_path = require(process.env.src_root + "/utilities/request_analysis/normalize_path");
+            var path = "https://test/test//test///test////test/test//test.js";
+            var [norm_path, analysis] = normalize_path(path, modules_root, relative_path_root);
+            console.log(norm_path);
+            // validate path
+            assert.equal(norm_path, "https://test/test/test/test/test/test/test.js", "cleaned path is accurate")
+        })
     })
 })

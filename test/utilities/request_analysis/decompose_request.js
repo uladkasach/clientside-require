@@ -23,7 +23,7 @@ describe('decompose_request', async function(){
         var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
         assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/sync/index.js', "path should be accurate");
+        assert.equal(details.path, 'file:///var/www/git/More/clientside-require/test/_env/custom_node_modules/sync/index.js', "path should be accurate");
         assert.equal(details.search_for_dependencies, true, "search_for_dependencies should be true for this module");
         assert.equal(details.dependencies.length, 0, "there should be no dependencies");
     })
@@ -33,7 +33,7 @@ describe('decompose_request', async function(){
         var details = await promise_to_decompose_request(request, modules_root, relative_path_root);
 
         assert.equal(details.type, "js", "type should be js");
-        assert.equal(details.path, 'file:////var/www/git/More/clientside-require/test/_env/custom_node_modules/sync_main/src/index.js', "path should be accurate");
+        assert.equal(details.path, 'file:///var/www/git/More/clientside-require/test/_env/custom_node_modules/sync_main/src/index.js', "path should be accurate");
         assert.equal(details.search_for_dependencies, true, "search_for_dependencies should be false for this module");
         assert.equal(details.dependencies.length, 0, "there should be no dependencies");
     })
