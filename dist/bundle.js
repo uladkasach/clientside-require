@@ -644,6 +644,8 @@ module.exports = {
             frame.contentWindow.alert = window.alert; // pass the alert functionality
             frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
             frame.contentWindow.prompt = window.prompt; // pass the prompt functionality
+            frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
+            frame.contentWindow.prompt = window.prompt; // pass the prompt functionality
             frame.contentWindow.HTMLElement = window.HTMLElement; // pass HTMLElement object
             frame.contentWindow.XMLHttpRequest = window.XMLHttpRequest; // pass the XMLHttpRequest functionality; using iframe's will result in an error as we delete the iframe that it is from
 
