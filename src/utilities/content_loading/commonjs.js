@@ -22,6 +22,7 @@ var basic_loaders = require("./basic.js");
                         the clientside-module-manager (this object) will have the same global window as the main file at ALL times.
 */
 
+const is_jsdom_environment = window.navigator.userAgent.includes("Node.js") || window.navigator.userAgent.includes("jsdom");
 module.exports = {
     promise_to_retreive_exports : async function(path){
         //create frame and define environmental variables
@@ -42,8 +43,14 @@ module.exports = {
         // extract the CommonJS-specified exports
         var exports = await this.helpers.extract_exports_from_frame(frame);
 
-        // destroy the frame now that we have the exports
-        if(typeof process == "undefined") this.helpers.remove_frame(frame); // do not remove iframe if we are using in node context (meaning we are using jsdom). TODO (#29) - figure how to preserve the window object (specifically window.document) after iframe is removed from parent
+        // destroy the frame now that we have the exports, if not in jsdom environment
+        if(!is_jsdom_environment) this.helpers.remove_frame(frame); // do not remove iframe if we are using in node context (meaning we are using jsdom). TODO (#29) - figure how to preserve the window object (specifically window.document) after iframe is removed from parent
+
+        // if in jsdom environment, then create a public list of frames accessible for removal
+        if(is_jsdom_environment){
+            if(typeof window.frames_to_remove == "undefined") window.frames_to_remove = [];
+            window.frames_to_remove.push(frame);
+        }
 
         // return the exports
         return exports;
@@ -62,8 +69,6 @@ module.exports = {
         browser_variables : function(frame, path){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality
             frame.contentWindow.alert = window.alert; // pass the alert functionality
-            frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
-            frame.contentWindow.prompt = window.prompt; // pass the prompt functionality
             frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
             frame.contentWindow.prompt = window.prompt; // pass the prompt functionality
             frame.contentWindow.HTMLElement = window.HTMLElement; // pass HTMLElement object

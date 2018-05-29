@@ -58,192 +58,6 @@ Dynamic_Serial_Promise_All.prototype = {
 module.exports = Dynamic_Serial_Promise_All;
 
 },{}],2:[function(require,module,exports){
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-process.prependListener = noop;
-process.prependOnceListener = noop;
-
-process.listeners = function (name) { return [] }
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-},{}],3:[function(require,module,exports){
 var normalize_path = require("./utilities/request_analysis/normalize_path.js");
 
 module.exports = {
@@ -288,7 +102,7 @@ module.exports = {
     },
 }
 
-},{"./utilities/request_analysis/normalize_path.js":11}],4:[function(require,module,exports){
+},{"./utilities/request_analysis/normalize_path.js":10}],3:[function(require,module,exports){
 /*
     Clientside Require Module
         - supports CommonJS require functionality in the browser
@@ -382,7 +196,7 @@ window.clientside_require = clientside_require; // provision `clientside_require
 window.load = clientside_require.asynchronous_require.bind(clientside_require); // provision `require` to global scope
 if(typeof module !== "undefined" && typeof module.exports != "undefined") module.exports = clientside_require; // export module if module.exports is defined
 
-},{"./cache.js":3,"./retreive.js":5,"./utilities/normalize_request_options":9,"dynamic-serial-promise-all":1}],5:[function(require,module,exports){
+},{"./cache.js":2,"./retreive.js":4,"./utilities/normalize_request_options":8,"dynamic-serial-promise-all":1}],4:[function(require,module,exports){
 /*
     retreival_manager handles placing requests to load content. handles sync and async requires.
 */
@@ -476,7 +290,7 @@ module.exports = {
 
 }
 
-},{"./utilities/content_loading/scoped.js":8,"./utilities/request_analysis/decompose_request.js":10}],6:[function(require,module,exports){
+},{"./utilities/content_loading/scoped.js":7,"./utilities/request_analysis/decompose_request.js":9}],5:[function(require,module,exports){
 /*
     basic resource loading methods that do not nessesarily preserve scope
 */
@@ -576,8 +390,7 @@ var generate_xhr_error = function(status_code, path){
     return error;
 }
 
-},{}],7:[function(require,module,exports){
-(function (process){
+},{}],6:[function(require,module,exports){
 var basic_loaders = require("./basic.js");
 /*
     meat and potatoes of clientside-require:
@@ -602,6 +415,7 @@ var basic_loaders = require("./basic.js");
                         the clientside-module-manager (this object) will have the same global window as the main file at ALL times.
 */
 
+const is_jsdom_environment = window.navigator.userAgent.includes("Node.js") || window.navigator.userAgent.includes("jsdom");
 module.exports = {
     promise_to_retreive_exports : async function(path){
         //create frame and define environmental variables
@@ -622,8 +436,14 @@ module.exports = {
         // extract the CommonJS-specified exports
         var exports = await this.helpers.extract_exports_from_frame(frame);
 
-        // destroy the frame now that we have the exports
-        if(typeof process == "undefined") this.helpers.remove_frame(frame); // do not remove iframe if we are using in node context (meaning we are using jsdom). TODO (#29) - figure how to preserve the window object (specifically window.document) after iframe is removed from parent
+        // destroy the frame now that we have the exports, if not in jsdom environment
+        if(!is_jsdom_environment) this.helpers.remove_frame(frame); // do not remove iframe if we are using in node context (meaning we are using jsdom). TODO (#29) - figure how to preserve the window object (specifically window.document) after iframe is removed from parent
+
+        // if in jsdom environment, then create a public list of frames accessible for removal
+        if(is_jsdom_environment){
+            if(typeof window.frames_to_remove == "undefined") window.frames_to_remove = [];
+            window.frames_to_remove.push(frame);
+        }
 
         // return the exports
         return exports;
@@ -642,8 +462,6 @@ module.exports = {
         browser_variables : function(frame, path){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality
             frame.contentWindow.alert = window.alert; // pass the alert functionality
-            frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
-            frame.contentWindow.prompt = window.prompt; // pass the prompt functionality
             frame.contentWindow.confirm = window.confirm; // pass the confirm functionality
             frame.contentWindow.prompt = window.prompt; // pass the prompt functionality
             frame.contentWindow.HTMLElement = window.HTMLElement; // pass HTMLElement object
@@ -719,8 +537,7 @@ module.exports = {
 
 }
 
-}).call(this,require('_process'))
-},{"./basic.js":6,"_process":2}],8:[function(require,module,exports){
+},{"./basic.js":5}],7:[function(require,module,exports){
 var basic_loaders = require("./basic.js");
 var commonjs_loader = require("./commonjs.js");
 /*
@@ -736,7 +553,7 @@ module.exports = {
     css : function(path){ return basic_loaders.promise_to_load_css_into_document(path) },
 }
 
-},{"./basic.js":6,"./commonjs.js":7}],9:[function(require,module,exports){
+},{"./basic.js":5,"./commonjs.js":6}],8:[function(require,module,exports){
 module.exports = function(options){
     if(typeof options == "undefined") options = {}; // ensure options are defined
     if(typeof options.relative_path_root == "undefined"){ // if relative path root not defined, default to dir based on location path
@@ -750,7 +567,7 @@ module.exports = function(options){
     return options;
 }
 
-},{}],10:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 var basic_loaders = require("./../content_loading/basic.js");
 var normalize_path = require("./normalize_path.js");
 /*
@@ -842,7 +659,7 @@ var decompose_request = async function(request, modules_root, relative_path_root
 
 module.exports = decompose_request;
 
-},{"./../content_loading/basic.js":6,"./normalize_path.js":11}],11:[function(require,module,exports){
+},{"./../content_loading/basic.js":5,"./normalize_path.js":10}],10:[function(require,module,exports){
 /*
     analyze and normalize path
         - used for cache_path
@@ -933,4 +750,4 @@ var normalize_path = function(path, modules_root, relative_path_root){
 
 module.exports = normalize_path;
 
-},{}]},{},[4]);
+},{}]},{},[3]);
