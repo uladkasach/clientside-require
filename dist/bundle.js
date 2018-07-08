@@ -458,6 +458,7 @@ module.exports = {
             frame.contentWindow.clientside_require = window.clientside_require; // pass by reference the clientside_require object
             frame.contentWindow.root_window = window; // pass the root window (browser window) to the module so it can use it if needed
             frame.contentWindow.load = load_function; // inject the load function
+            frame.contentWindow.env = frame.contentWindow; // pass the window property of the iframe as the env property
         },
         browser_variables : function(frame, path){ // browser environment variables (those not present in iframes)
             frame.contentWindow.console = window.console; // pass the console functionality
