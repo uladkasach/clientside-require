@@ -6,6 +6,7 @@ var test_paths = {
     js_commonjs : "file:///"+ process.env.test_env_root + "/basic_content/test_js_commonjs.js",
     reference_clientside_require : "file:///"+ process.env.test_env_root + "/test_js/reference_clientside_require_in_module.js",
     reference_window : "file:///"+ process.env.test_env_root + "/test_js/reference_window_in_module.js",
+    reference_env : "file:///"+ process.env.test_env_root + "/test_js/reference_env_in_module.js",
     reference_load : "file:///"+ process.env.test_env_root + "/test_js/reference_load_in_module.js",
     reference_require : "file:///"+ process.env.test_env_root + "/test_js/reference_require_in_module.js",
     reference_root_window : "file:///"+ process.env.test_env_root + "/test_js/reference_root_window_in_module.js",
@@ -74,28 +75,34 @@ describe('commonjs', function(){
             assert.equal(typeof exports, "object", "window should be defined");
             assert.equal(typeof exports.document, "object", "window.document should be defined");
         })
-        it("should define window.clientside_require in the modules environment", async function(){
+        it('should define env in the modules environment', async function(){
+            var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
+            var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_env, "async");
+            assert.equal(typeof exports, "object", "env should be defined");
+            assert.equal(typeof exports.document, "object", "env.document should be defined");
+        })
+        it("should define env.clientside_require in the modules environment", async function(){
             var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
             var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_clientside_require, "async");
             assert.equal(typeof exports, "object", "window.clientside_require should be defined");
             assert.equal(typeof exports.asynchronous_require, "function", "window.clientside_require.asynchronous_require should be defined");
         })
-        it('should define window.require in the modules environment', async function(){
+        it('should define env.require in the modules environment', async function(){
             var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
             var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_load, "async");
             assert.equal(typeof exports, "function", "require method should be defined");
         })
-        it('should define window.load in the modules environment', async function(){
+        it('should define env.load in the modules environment', async function(){
             var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
             var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_require, "async");
             assert.equal(typeof exports, "function", "load method should be defined");
         })
-        it('should define window.root_window in the modules environment', async function(){
+        it('should define env.root_window in the modules environment', async function(){
             var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
             var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_root_window, "async");
             assert.equal(typeof exports, "object", "root_window should be defined");
         })
-        it('should define window.location in the modules environment accurately', async function(){
+        it('should define env.location in the modules environment accurately', async function(){
             var commonjs_loader = require(process.env.src_root + "/utilities/content_loading/commonjs.js");
             var exports = await commonjs_loader.promise_to_retreive_exports(test_paths.reference_location, "async");
             assert.equal(typeof exports, "object", "location should be defined");

@@ -1,1 +1,1 @@
-module.exports = window.require;
+module.exports = env.require;

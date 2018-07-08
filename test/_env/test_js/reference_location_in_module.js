@@ -1,1 +1,1 @@
-module.exports = window.script_location;
+module.exports = env.script_location;

@@ -1,1 +1,1 @@
-module.exports = window.clientside_require;
+module.exports = env.clientside_require;

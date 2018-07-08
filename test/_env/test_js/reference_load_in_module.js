@@ -1,1 +1,1 @@
-module.exports = window.load;
+module.exports = env.load;
