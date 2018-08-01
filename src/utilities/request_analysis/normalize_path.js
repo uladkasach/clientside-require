@@ -27,7 +27,7 @@ var normalize_path = function(path, modules_root, relative_path_root){
     var is_relative_path_type_2 = path.indexOf("../") == 0; // then it is a path of form "../somepath", a relative path as defined by node
     var is_relative_path = is_relative_path_type_1 || is_relative_path_type_2;
 
-    var is_a_path = path.indexOf("/") > -1; // make sure not node_relative_path
+    var is_a_path = path.indexOf("/") > -1 && !path.startsWith("@"); // make sure not node_relative_path
     var is_a_module = !is_a_path;
 
     var extension = path.slice(1).split('.').pop(); // slice(1) to skip the first letter - avoids error of assuming extension exists if is_relative_path
